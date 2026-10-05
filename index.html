@@ -1,0 +1,790 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>CA Inter Ledger</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Libre+Caslon+Text:ital,wght@0,400;0,700;1,400&family=Instrument+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{
+  --cover:#1E3A2F; --cover-2:#2A4A3C; --cover-ink:#E8EEE6; --cover-muted:#A9BBAE;
+  --paper:#EDF1EA; --sheet:#F8FAF5; --ink:#1D252E; --muted:#5B6660; --rule:#D3DBD1;
+  --blue:#2A4D8F; --red:#B23A2E; --gold:#B8892B; --gold-soft:#F3E8CC; --green:#2F7A4B;
+  --serif:"Libre Caslon Text",Georgia,"Times New Roman",serif;
+  --sans:"Instrument Sans",system-ui,-apple-system,"Segoe UI",sans-serif;
+  color-scheme:light;
+}
+*{box-sizing:border-box}
+html,body{height:100%}
+body{margin:0;background:var(--paper);color:var(--ink);font:16px/1.5 var(--sans);
+  padding-bottom:env(safe-area-inset-bottom,0px);font-variant-numeric:tabular-nums}
+button{font:inherit;color:inherit;cursor:pointer}
+input,select{font:inherit}
+:focus-visible{outline:2px solid var(--gold);outline-offset:2px}
+h3{font-family:var(--serif);font-weight:400;font-size:1.25rem;margin:0 0 10px}
+
+.wrap{display:grid;grid-template-columns:360px minmax(0,1fr);min-height:100%}
+
+/* Cover */
+.cover{background:var(--cover);color:var(--cover-ink);padding:calc(28px + env(safe-area-inset-top,0px)) 26px 28px;
+  position:sticky;top:0;height:100vh;overflow:auto}
+.cover h1{font-family:var(--serif);font-weight:400;font-size:2rem;line-height:1.1;margin:0}
+.cover .for{font-family:var(--serif);font-style:italic;color:var(--cover-muted);margin:6px 0 20px}
+.level{background:var(--cover-2);border-radius:8px;padding:12px 14px;margin-bottom:16px}
+.level .rank{font-family:var(--serif);font-size:1.25rem;line-height:1.2}
+.level .sub{font-size:.82rem;color:var(--cover-muted);display:flex;justify-content:space-between;margin-top:2px}
+.xpbar{height:8px;background:var(--cover);border-radius:4px;margin-top:8px;overflow:hidden}
+.xpbar i{display:block;height:100%;background:var(--gold);transition:width .6s ease}
+.count{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:6px}
+.count div{background:var(--cover-2);padding:10px 12px;border-radius:6px}
+.count b{display:block;font-family:var(--serif);font-size:1.6rem;font-weight:400;line-height:1.1}
+.count span{font-size:.85rem;color:var(--cover-muted)}
+.est{font-size:.8rem;color:var(--cover-muted);margin:4px 0 6px}
+.linkbtn{background:none;border:0;padding:0;text-decoration:underline;color:inherit;font-size:.85rem}
+.dates{display:none;gap:8px;margin:10px 0 0;flex-wrap:wrap}
+.dates.open{display:flex}
+.dates label{font-size:.8rem;color:var(--cover-muted);display:flex;flex-direction:column;gap:3px}
+.dates input{font-size:.9rem;padding:4px 6px;border-radius:4px;border:1px solid var(--cover-muted);background:var(--sheet);color:var(--ink)}
+.streak{margin:20px 0}
+.streak p{margin:0 0 6px;font-size:.9rem}
+.strip{display:grid;grid-template-columns:repeat(14,1fr);gap:4px}
+.strip i{aspect-ratio:1;border-radius:3px;background:var(--cover-2)}
+.strip i.on{background:var(--gold)}
+.strip i.today{box-shadow:inset 0 0 0 2px var(--cover-ink)}
+.tb{width:100%;border-collapse:collapse;margin-bottom:18px;font-size:.95rem}
+.tb caption{text-align:left;font-family:var(--serif);font-size:1.05rem;padding-bottom:6px}
+.tb td{padding:5px 0;border-bottom:1px solid var(--cover-2)}
+.tb td:last-child{text-align:right;white-space:nowrap}
+.tb tr.total td{border-bottom:3px double var(--cover-ink);font-weight:600;padding-top:8px}
+.accounts h2{font-family:var(--serif);font-weight:400;font-size:1rem;color:var(--cover-muted);margin:16px 0 4px}
+.acct{display:grid;grid-template-columns:1fr auto;align-items:baseline;gap:10px;width:100%;text-align:left;
+  background:none;border:0;border-bottom:1px solid var(--cover-2);padding:9px 6px}
+.acct:hover{background:var(--cover-2)}
+.acct.sel{background:var(--cover-2);box-shadow:inset 3px 0 0 var(--gold)}
+.acct .nm small{display:block;color:var(--cover-muted);font-size:.78rem}
+.acct.tallied .fig{border-bottom:3px double var(--gold);color:#F3E3B8}
+.sync{margin-top:20px;font-size:.8rem;color:var(--cover-muted)}
+
+/* Main */
+main{padding:calc(20px + env(safe-area-inset-top,0px)) clamp(16px,4vw,48px) 60px;max-width:1000px;width:100%}
+.tabs{display:flex;gap:4px;border-bottom:1px solid var(--rule);margin-bottom:22px;overflow-x:auto}
+.tabs button{background:none;border:0;padding:10px 14px;color:var(--muted);border-bottom:3px solid transparent;white-space:nowrap}
+.tabs button[aria-selected="true"]{color:var(--ink);border-bottom-color:var(--gold);font-weight:600}
+.tabs .badge-dot{display:inline-block;min-width:1.3em;padding:0 5px;margin-left:4px;border-radius:9px;background:var(--red);color:#fff;font-size:.72rem}
+.head{display:flex;justify-content:space-between;align-items:flex-end;gap:16px;flex-wrap:wrap;margin-bottom:6px}
+.head h2{font-family:var(--serif);font-weight:400;font-size:clamp(1.6rem,3vw,2.3rem);line-height:1.1;margin:0}
+.stamp{font-family:var(--serif);font-style:italic;color:var(--gold);border:2px solid var(--gold);padding:2px 12px;border-radius:4px;transform:rotate(-4deg);display:inline-block}
+.meta{color:var(--muted);margin:4px 0 16px}
+.bar{height:6px;background:var(--rule);border-radius:3px;overflow:hidden;margin-bottom:16px}
+.bar i{display:block;height:100%;background:var(--blue)}
+.filters{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px}
+.pill{border:1px solid var(--rule);background:var(--sheet);padding:5px 12px;border-radius:999px;font-size:.88rem}
+.pill[aria-pressed="true"]{background:var(--ink);color:var(--sheet);border-color:var(--ink)}
+.hint{font-size:.85rem;color:var(--muted);margin:0 0 16px;max-width:70ch}
+.hint button{background:none;border:0;padding:0;color:var(--blue);text-decoration:underline;font-size:inherit}
+
+.book{background:var(--sheet);border-left:3px double var(--red);border-radius:0 6px 6px 0;padding:4px 0}
+.sec{font-family:var(--serif);font-size:1.1rem;padding:16px 16px 6px;color:var(--blue)}
+.row{display:grid;grid-template-columns:3.4rem minmax(0,1fr) auto;align-items:center;gap:12px;padding:9px 16px 9px 0;border-bottom:1px solid var(--rule)}
+.row:last-child{border-bottom:0}
+.row .num{color:var(--red);text-align:right;font-size:.88rem;border-right:1px solid var(--red);padding-right:10px;align-self:stretch;display:flex;align-items:center;justify-content:flex-end}
+.row .title{min-width:0}
+.row .title small{display:block;font-family:var(--sans);font-size:.8rem;color:var(--muted)}
+.row.chap .title{font-family:var(--serif);font-size:1.02rem}
+.row.unit .title{padding-left:14px;font-size:.95rem}
+.row.s4 .title{color:var(--muted)}
+.row.done-today{background:linear-gradient(90deg,var(--gold-soft),transparent 70%)}
+.ctrl{display:flex;align-items:center;gap:10px}
+.dots{display:flex;gap:5px}
+.dot{width:20px;height:20px;border-radius:50%;border:2px solid var(--blue);background:transparent;padding:0;transition:transform .15s}
+.dot:hover{transform:scale(1.15)}
+.dot.on{background:var(--blue)}
+.dot.gold{border-color:var(--gold)}
+.dot.gold.on{background:var(--gold)}
+.stage{font-size:.8rem;color:var(--muted);width:4.2rem}
+.abc{min-width:2.6rem;border:1px solid var(--rule);background:transparent;border-radius:4px;font-size:.8rem;padding:2px 6px;color:var(--muted)}
+.abc.a-A{background:var(--red);border-color:var(--red);color:#fff;font-weight:600}
+.abc.a-B{background:var(--blue);border-color:var(--blue);color:#fff;font-weight:600}
+.abc.a-C{background:var(--muted);border-color:var(--muted);color:#fff;font-weight:600}
+.qs{border:1px solid var(--rule);background:transparent;border-radius:4px;font-size:.8rem;padding:2px 8px;color:var(--muted)}
+.qs.on{border-color:var(--gold);color:var(--ink);background:var(--gold-soft)}
+.mchips{display:none;gap:6px;overflow-x:auto;margin:0 0 16px;padding-bottom:4px}
+.mchips .pill{white-space:nowrap}
+.empty{padding:20px 16px;color:var(--muted);margin:0}
+
+/* Today */
+.grid2{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:18px;margin-bottom:22px}
+.card{background:var(--sheet);border:1px solid var(--rule);border-radius:8px;padding:18px}
+.card.note{border-left:4px solid var(--gold)}
+.note p{font-family:var(--serif);font-size:1.15rem;line-height:1.5;margin:0}
+.note small{display:block;color:var(--muted);margin-top:8px}
+.questbar{display:flex;gap:6px;margin:4px 0 12px}
+.questbar i{flex:1;height:8px;border-radius:4px;background:var(--rule)}
+.questbar i.on{background:var(--gold)}
+.clock{font-family:var(--serif);font-size:3.2rem;line-height:1;margin:6px 0 12px}
+.trow{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.primary{background:var(--blue);color:#fff;border:0;border-radius:6px;padding:8px 18px;font-weight:600}
+.primary:hover{filter:brightness(1.1)}
+.ghost{background:transparent;border:1px solid var(--rule);border-radius:6px;padding:7px 14px}
+.week{display:grid;grid-template-columns:repeat(7,1fr);gap:6px;align-items:end;height:90px;margin-top:14px}
+.week div{display:flex;flex-direction:column;align-items:center;justify-content:flex-end;height:100%;font-size:.72rem;color:var(--muted)}
+.week b{width:100%;background:var(--blue);border-radius:3px 3px 0 0;min-height:2px;display:block;margin-bottom:4px}
+.week .t b{background:var(--gold)}
+
+/* Tests */
+.form{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:10px;align-items:end}
+.form label{display:flex;flex-direction:column;gap:4px;font-size:.82rem;color:var(--muted)}
+.form input,.form select{padding:7px 8px;border:1px solid var(--rule);border-radius:6px;background:#fff;color:var(--ink)}
+table.mk{width:100%;border-collapse:collapse;font-size:.92rem}
+table.mk th{text-align:left;font-weight:600;color:var(--muted);font-size:.8rem;padding:6px 8px;border-bottom:1px solid var(--rule)}
+table.mk td{padding:7px 8px;border-bottom:1px solid var(--rule)}
+.tag{display:inline-block;padding:1px 8px;border-radius:9px;font-size:.78rem;font-weight:600}
+.tag.ex{background:var(--gold-soft);color:#7A5A12}
+.tag.pass{background:#DDEEE2;color:var(--green)}
+.tag.fail{background:#F4DCD9;color:var(--red)}
+.x{background:none;border:0;color:var(--muted);font-size:1.1rem;line-height:1}
+.scroll{overflow-x:auto}
+
+/* Badges */
+.badges{display:grid;grid-template-columns:repeat(auto-fill,minmax(190px,1fr));gap:12px}
+.bdg{background:var(--sheet);border:1px solid var(--rule);border-radius:8px;padding:14px;display:flex;gap:12px;align-items:flex-start}
+.bdg .seal{flex:none;width:42px;height:42px;border-radius:50%;display:grid;place-items:center;font-family:var(--serif);font-size:1.1rem;
+  border:2px dashed var(--rule);color:var(--rule)}
+.bdg.got .seal{border:2px solid var(--gold);background:var(--gold-soft);color:#7A5A12}
+.bdg b{display:block;font-size:.95rem}
+.bdg small{color:var(--muted);font-size:.8rem;display:block}
+.bdg:not(.got) b{color:var(--muted)}
+.ladder{list-style:none;padding:0;margin:0;columns:2;column-gap:24px}
+.ladder li{padding:5px 0;border-bottom:1px solid var(--rule);display:flex;justify-content:space-between;break-inside:avoid;font-size:.92rem}
+.ladder li.cur{font-weight:600;color:var(--blue)}
+.ladder li.past{color:var(--muted)}
+
+/* Guide */
+.guide{max-width:70ch}
+.guide section{margin-bottom:28px}
+.guide p,.guide li{line-height:1.6}
+.guide ol,.guide ul{padding-left:1.2em}
+.guide code{background:var(--gold-soft);padding:1px 5px;border-radius:3px;font-size:.9em}
+.xp-table{border-collapse:collapse;width:100%;font-size:.92rem}
+.xp-table td{padding:5px 8px;border-bottom:1px solid var(--rule)}
+.xp-table td:last-child{text-align:right}
+
+/* Overlays */
+#toasts{position:fixed;right:16px;bottom:calc(16px + env(safe-area-inset-bottom,0px));display:flex;flex-direction:column;gap:8px;z-index:60;max-width:min(360px,calc(100vw - 32px))}
+.toast{background:var(--ink);color:#fff;padding:12px 16px;border-radius:8px;box-shadow:0 6px 24px rgba(20,30,25,.25);font-size:.92rem;animation:pop .25s ease}
+.toast b{color:#F3D58A}
+@keyframes pop{from{transform:translateY(10px);opacity:0}to{transform:none;opacity:1}}
+#confetti{position:fixed;inset:0;pointer-events:none;z-index:70}
+.modal{position:fixed;inset:0;background:rgba(15,25,20,.55);display:grid;place-items:center;z-index:80;padding:16px}
+.modal .box{background:var(--sheet);border-radius:10px;padding:26px;max-width:460px;width:100%}
+.modal h3{font-size:1.6rem}
+.modal .trow{margin-top:18px}
+#tourDim{position:fixed;inset:0;background:rgba(15,25,20,.45);z-index:85}
+.spot{position:relative;z-index:86;box-shadow:0 0 0 4px var(--gold),0 0 0 9999px rgba(0,0,0,0)!important;border-radius:6px;background:inherit}
+#tourBox{position:fixed;z-index:90;background:var(--sheet);border-radius:10px;padding:16px 18px;width:min(320px,calc(100vw - 24px));box-shadow:0 10px 30px rgba(0,0,0,.3)}
+#tourBox p{margin:0 0 12px}
+#tourBox .step{font-size:.78rem;color:var(--muted)}
+
+@media (max-width:860px){
+  .wrap{grid-template-columns:minmax(0,1fr)}
+  .cover{position:static;height:auto;order:2}
+  main{order:1}
+  .mchips{display:flex}
+  .row{grid-template-columns:2.8rem minmax(0,1fr)}
+  .row .ctrl{grid-column:2;flex-wrap:wrap}
+  .row.unit .title{padding-left:0}
+  .ladder{columns:1}
+}
+@media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <aside class="cover">
+    <h1>CA Inter Ledger</h1>
+    <p class="for">Kept for Siddhi, May 2027 attempt</p>
+    <div class="level" id="levelbox" title="Earn XP by studying, revising, practising questions, focus sessions and logging tests"></div>
+    <div class="count" id="count"></div>
+    <p class="est" id="est"></p>
+    <button class="linkbtn" id="editDates" aria-expanded="false" aria-controls="dates">Change exam dates</button>
+    <div class="dates" id="dates">
+      <label>Group I starts<input type="date" id="g1"></label>
+      <label>Group II starts<input type="date" id="g2"></label>
+    </div>
+    <div class="streak" id="streak" title="A day counts when you mark anything or finish a focus session"></div>
+    <table class="tb" id="tb"></table>
+    <nav class="accounts" id="accounts" aria-label="Papers"></nav>
+    <p class="sync" id="sync" role="status"></p>
+  </aside>
+  <main>
+    <div class="tabs" role="tablist" id="tabs"></div>
+    <div id="main"></div>
+  </main>
+</div>
+<div id="toasts" aria-live="polite"></div>
+<canvas id="confetti" aria-hidden="true"></canvas>
+<input type="file" id="importFile" accept="application/json" hidden>
+<script>
+/* ===== Settings for Varun ===== */
+/* 1. Paste the Apps Script web app URL here so progress saves to the Google Sheet. */
+const SYNC_URL = "https://script.google.com/macros/s/AKfycbyPgkoq0aT8DYNvAmgEoDE90nvmEwhOsuQEl-aLw5g4-MhDjv3N-O7SW190eo4KB0R9MA/exec";
+const SYNC_KEY = "ca-inter-may-2027";
+/* 2. Notes shown on her Today page, one per day in rotation. Replace these with your own. */
+const NOTES = [
+  "Good morning, future CA. Every page you read today is a brick in the life you're building. I'm so proud of you.",
+  "You already conquered Foundation. Inter is just the next sky to explore, and you were made for big skies. 🌙",
+  "Small reminder: you don't have to be perfect today, just consistent. One chapter at a time, my love.",
+  "Advanced Accounting might look scary, but so did Foundation once. Look at you now.",
+  "Somewhere in that pile of standards and sections is the version of you who has already passed. Go meet her.",
+  "The moon doesn't shine all at once. It grows a little every night. So will you. 🌒",
+  "Pick your favourite pen today and write like the exam already belongs to you. ✍️",
+  "You love data, so here's mine: days you've shown up so far = all of them. That's a winning trend.",
+  "Tired is allowed. Quitting isn't. Rest, drink some water, then go get it.",
+  "Tax sections and audit standards fear you more than you fear them. Remember that.",
+  "I believe in you on the days you forget to believe in yourself. Today is no different.",
+  "Every revision you do now is a gift to the you sitting in that exam hall. Be kind to her.",
+  "Stars take millions of years to form. You only need a few focused months. ⭐",
+  "Whatever happens today, I'm in your corner. Always. Now go make Costing your friend.",
+  "CA Siddhi has a beautiful ring to it, doesn't it? Keep going, we're almost there."
+];
+const NOTE_SIGNOFF = "Varun";
+/* ===== End of settings ===== */
+
+const LS_KEY = "ca-inter-ledger-v1";
+const STAGES = ["To do","Studied","Rev 1","Rev 2","Rev 3"];
+const STAGE_XP = [0,20,35,45,55];
+const GAP = [0,7,21,45];
+const LEVELS = [[0,"Fresh Ledger"],[250,"Article Hopeful"],[600,"Journal Keeper"],[1100,"Trial Balancer"],
+  [1800,"Standards Scholar"],[2700,"Tax Tamer"],[3800,"Audit Ace"],[5000,"Cost Commander"],[6500,"May Ready"],[8000,"Rank Material"]];
+const TEST_TYPES = ["Coaching test","ICAI MTP","ICAI RTP","Past paper","Self test"];
+
+const SYLLABUS = [
+ {id:"p1",g:1,no:1,name:"Advanced Accounting",sections:[{t:null,ch:[
+  ["1","Introduction to Accounting Standards"],
+  ["2","Framework for Preparation and Presentation of Financial Statements"],
+  ["3","Applicability of Accounting Standards"],
+  ["4","Presentation and Disclosures Based Accounting Standards",["AS 1 Disclosure of Accounting Policies","AS 3 Cash Flow Statement","AS 17 Segment Reporting","AS 18 Related Party Disclosures","AS 20 Earnings Per Share","AS 24 Discontinuing Operations","AS 25 Interim Financial Reporting"]],
+  ["5","Assets Based Accounting Standards",["AS 2 Valuation of Inventories","AS 10 Property, Plant and Equipment","AS 13 Accounting for Investments","AS 16 Borrowing Costs","AS 19 Leases","AS 26 Intangible Assets","AS 28 Impairment of Assets"]],
+  ["6","Liabilities Based Accounting Standards",["AS 15 Employee Benefits","AS 29 Provisions, Contingent Liabilities and Contingent Assets"]],
+  ["7","Accounting Standards Based on Items Impacting Financial Statements",["AS 4 Contingencies and Events after the Balance Sheet Date","AS 5 Net Profit or Loss, Prior Period Items and Changes in Accounting Policies","AS 11 Effects of Changes in Foreign Exchange Rates","AS 22 Accounting for Taxes on Income"]],
+  ["8","Revenue Based Accounting Standards",["AS 7 Construction Contracts","AS 9 Revenue Recognition"]],
+  ["9","Other Accounting Standards",["AS 12 Accounting for Government Grants","AS 14 Accounting for Amalgamations"]],
+  ["10","Accounting Standards for Consolidated Financial Statements",["AS 21 Consolidated Financial Statements","AS 23 Investments in Associates","AS 27 Interests in Joint Ventures"]],
+  ["11","Financial Statements of Companies",["Preparation of Financial Statements","Cash Flow Statements"]],
+  ["12","Buy-back of Securities"],
+  ["13","Amalgamation of Companies"],
+  ["14","Accounting for Reconstruction of Companies"],
+  ["15","Accounting for Branches including Foreign Branches"]]}]},
+ {id:"p2",g:1,no:2,name:"Corporate and Other Laws",sections:[
+  {t:"Part I: Company Law and LLP",ch:[
+  ["1","Preliminary"],["2","Incorporation of Company and Matters Incidental thereto"],["3","Prospectus and Allotment of Securities"],
+  ["4","Share Capital and Debentures"],["5","Acceptance of Deposits by Companies"],["6","Registration of Charges"],
+  ["7","Management and Administration"],["8","Declaration and Payment of Dividend"],["9","Accounts of Companies"],
+  ["10","Audit and Auditors"],["11","Companies Incorporated Outside India"],["12","The Limited Liability Partnership Act, 2008"]]},
+  {t:"Part II: Other Laws",ch:[["1","The General Clauses Act, 1897"],["2","Interpretation of Statutes"],["3","The Foreign Exchange Management Act, 1999"]]}]},
+ {id:"p3",g:1,no:3,name:"Taxation",sections:[
+  {t:"Section A: Income Tax",ch:[
+  ["1","Basic Concepts"],["2","Residential Status and Scope of Total Income"],
+  ["3","Heads of Income",["Salaries","Income from House Property","Profits and Gains of Business or Profession","Capital Gains","Income from Other Sources"]],
+  ["4","Income of Other Persons Included in Total Income"],["5","Set off or Carry Forward and Set off of Losses"],
+  ["6","Deductions from Gross Total Income"],["7","Tax Deduction or Collection at Source and Advance Tax"],
+  ["8","Provisions for Filing Return of Income and Self Assessment"],["9","Income Tax Liability: Computation and Optimisation"]]},
+  {t:"Section B: Goods and Services Tax",ch:[
+  ["1","GST in India: An Introduction"],["2","Supply under GST"],["3","Charge of GST"],["4","Place of Supply"],
+  ["5","Exemptions from GST"],["6","Time of Supply"],["7","Value of Supply"],["8","Input Tax Credit"],["9","Registration"],
+  ["10","Tax Invoice; Credit and Debit Notes"],["11","Accounts and Records"],["12","E-way Bill"],["13","Payment of Tax"],
+  ["14","Tax Deduction at Source and Collection of Tax at Source"],["15","Returns"]]}]},
+ {id:"p4",g:2,no:4,name:"Cost and Management Accounting",sections:[{t:null,ch:[
+  ["1","Introduction to Cost and Management Accounting"],["2","Material Cost"],["3","Employee Cost and Direct Expenses"],
+  ["4","Overheads: Absorption Costing Method"],["5","Activity Based Costing"],["6","Cost Sheet"],["7","Cost Accounting Systems"],
+  ["8","Unit and Batch Costing"],["9","Job Costing"],["10","Process and Operation Costing"],["11","Joint Products and By-products"],
+  ["12","Service Costing"],["13","Standard Costing"],["14","Marginal Costing"],["15","Budgets and Budgetary Control"]]}]},
+ {id:"p5",g:2,no:5,name:"Auditing and Ethics",sections:[{t:null,ch:[
+  ["1","Nature, Objective and Scope of Audit"],["2","Audit Strategy, Audit Planning and Audit Programme"],
+  ["3","Risk Assessment and Internal Control"],["4","Audit Evidence"],["5","Audit of Items of Financial Statements"],
+  ["6","Audit Documentation"],["7","Completion and Review"],["8","Audit Report"],
+  ["9","Special Features of Audit of Different Types of Entities"],["10","Audit of Banks"],["11","Ethics and Terms of Audit Engagements"]]}]},
+ {id:"p6",g:2,no:6,name:"Financial Management and Strategic Management",sections:[
+  {t:"Section A: Financial Management",ch:[
+  ["1","Scope and Objectives of Financial Management"],["2","Types of Financing"],["3","Financial Analysis and Planning: Ratio Analysis"],
+  ["4","Cost of Capital"],["5","Financing Decisions: Capital Structure"],["6","Financing Decisions: Leverages"],
+  ["7","Investment Decisions: Capital Budgeting"],["8","Dividend Decision"],
+  ["9","Management of Working Capital",["Introduction to Working Capital Management","Treasury and Cash Management","Management of Inventory","Management of Receivables","Management of Payables","Financing of Working Capital"]]]},
+  {t:"Section B: Strategic Management",ch:[
+  ["1","Introduction to Strategic Management"],["2","Strategic Analysis: External Environment"],
+  ["3","Strategic Analysis: Internal Environment"],["4","Strategic Choices"],["5","Strategy Implementation and Evaluation"]]}]}
+];
+
+const LEAF = {};
+SYLLABUS.forEach(s=>{
+  s.leaves=[];
+  s.sections.forEach((sec,si)=>sec.ch.forEach(c=>{
+    const base=`${s.id}-${si}-${c[0]}`;
+    if(c[2]) c[2].forEach((u,k)=>{const id=`${base}-u${k+1}`;s.leaves.push(id);LEAF[id]={p:s,num:`${c[0]}.${k+1}`,title:u,parent:c[1]};});
+    else {s.leaves.push(base);LEAF[base]={p:s,num:c[0],title:c[1]};}
+  }));
+});
+const ALL = SYLLABUS.flatMap(s=>s.leaves);
+const AS_IDS = SYLLABUS[0].leaves.filter(id=>{const p=id.split("-");return p[3]&&+p[2]>=4&&+p[2]<=10;});
+const HEADS = SYLLABUS[2].leaves.filter(id=>id.startsWith("p3-0-3-u"));
+const GST = SYLLABUS[2].leaves.filter(id=>id.startsWith("p3-1-"));
+const G1 = SYLLABUS.filter(p=>p.g===1).flatMap(p=>p.leaves);
+const G2 = SYLLABUS.filter(p=>p.g===2).flatMap(p=>p.leaves);
+
+const BADGES = [
+  ["first","Opening entry","Mark your first entry as studied",c=>c.studied>=1],
+  ["ten","Ten down","Study 10 entries",c=>c.studied>=10],
+  ["half","Halfway house","Study half the syllabus",c=>c.studied>=Math.ceil(ALL.length/2)],
+  ["all","Every page turned","Study every entry at least once",c=>c.studied>=ALL.length],
+  ["s3","Hat trick","Keep a 3 day streak",c=>c.streak>=3],
+  ["s7","Week strong","Keep a 7 day streak",c=>c.streak>=7],
+  ["s21","Habit formed","Keep a 21 day streak",c=>c.streak>=21],
+  ["as","Standard bearer","Study every Accounting Standard unit",c=>c.doneAll(AS_IDS)],
+  ["heads","Five heads","Study all five heads of income",c=>c.doneAll(HEADS)],
+  ["gst","GST sorted","Study every GST chapter",c=>c.doneAll(GST)],
+  ["tally","First tally","Revise every entry in one paper",c=>c.tallies>=1],
+  ["g1","Group I ready","Revise every Group I entry",c=>c.revAll(G1)],
+  ["g2","Group II ready","Revise every Group II entry",c=>c.revAll(G2)],
+  ["r3","Triple checked","Take 20 entries to Rev 3",c=>c.r3>=20],
+  ["qs","Question bank","Mark questions done on 50 entries",c=>c.q>=50],
+  ["prio","Sorted priorities","Give 30 entries an ABC priority",c=>c.abc>=30],
+  ["focus","Deep focus","Finish 10 focus sessions",c=>c.sessions>=10],
+  ["marathon","Marathon day","Finish 4 focus sessions in one day",c=>c.maxDay>=4],
+  ["mock","First test","Log a test score",c=>c.mocks>=1],
+  ["exempt","Exemption zone","Score 60 or more in a test",c=>c.best>=60],
+  ["quest","Quest complete","Finish all three of a day's quests",c=>c.questDone]
+];
+
+/* ---------- state ---------- */
+function blank(){return {v:2,updated:0,items:{},dates:{g1:"2027-05-01",g2:"2027-05-01",set:false},log:{},focus:{},mocks:[],badges:{},tallied:{},lvl:0,quest:null,cheer:"",seen:{}};}
+function normalise(d){
+  const b=blank(),o=Object.assign(b,d||{});
+  o.dates=Object.assign(blank().dates,(d&&d.dates)||{});
+  ["items","log","focus","badges","tallied","seen"].forEach(k=>{if(!o[k]||typeof o[k]!=="object")o[k]={};});
+  if(!Array.isArray(o.mocks))o.mocks=[];
+  return o;
+}
+function load(){try{const r=localStorage.getItem(LS_KEY);if(r)return normalise(JSON.parse(r));}catch(e){}return blank();}
+let state=load(), tab="today", current="p1", filter="all", pushTimer=null, primed=false;
+
+const dayKey=d=>d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0");
+const today=()=>dayKey(new Date());
+const daysBetween=(a,b)=>Math.round((new Date(b+"T00:00:00")-new Date(a+"T00:00:00"))/864e5);
+const esc=s=>String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/"/g,"&quot;");
+function item(id){return state.items[id]||{s:0,a:"",q:false};}
+
+function save(logged){
+  if(logged){const k=today();state.log[k]=(state.log[k]||0)+1;}
+  state.updated=Date.now();
+  try{localStorage.setItem(LS_KEY,JSON.stringify(state));}catch(e){}
+  if(!SYNC_URL){setSync("Saving in this browser only. See the Guide to turn on syncing.");return;}
+  setSync("Saving");clearTimeout(pushTimer);pushTimer=setTimeout(push,900);
+}
+function setSync(t){document.getElementById("sync").textContent=t;}
+async function push(){
+  try{const r=await fetch(SYNC_URL,{method:"POST",body:JSON.stringify({key:SYNC_KEY,data:state})});
+    const j=await r.json();if(!j.ok)throw new Error(j.error||"rejected");setSync("All progress saved");}
+  catch(e){setSync("Not saved yet. Check the connection, then mark anything to retry.");}
+}
+async function pull(){
+  if(!SYNC_URL){setSync("Saving in this browser only. See the Guide to turn on syncing.");afterLoad();return;}
+  setSync("Loading your progress");
+  try{
+    const r=await fetch(SYNC_URL+"?key="+encodeURIComponent(SYNC_KEY));const d=await r.json();
+    if(d&&d.items&&(d.updated||0)>=(state.updated||0)){state=normalise(d);try{localStorage.setItem(LS_KEY,JSON.stringify(state));}catch(e){}}
+    else if((state.updated||0)>((d&&d.updated)||0))push();
+    setSync("All progress saved");
+  }catch(e){setSync("Couldn't reach the save sheet. Anything you mark now lasts only until this tab closes.");}
+  afterLoad();
+}
+function afterLoad(){primed=true;if(!state.seen.start)state.seen.start=today();ensureQuest();checkRewards(true);render();if(!state.seen.welcome)welcome();}
+
+/* ---------- numbers ---------- */
+function stats(ids){
+  let pts=0,studied=0,rev=0,q=0;
+  ids.forEach(id=>{const it=item(id);pts+=it.s;if(it.s>=1)studied++;if(it.s>=2)rev++;if(it.q)q++;});
+  return {n:ids.length,studied,rev,q,pct:Math.round(pts/(4*ids.length)*100)};
+}
+function streak(){
+  let n=0;const d=new Date();
+  for(let i=0;i<500;i++){const k=dayKey(d);if(state.log[k])n++;else if(i>0)break;d.setDate(d.getDate()-1);}
+  return n;
+}
+function focusTotals(){let m=0,n=0,max=0;Object.values(state.focus).forEach(f=>{m+=f.m;n+=f.n;max=Math.max(max,f.n);});return {m,n,max};}
+function xp(){
+  let x=0;Object.values(state.items).forEach(it=>{x+=STAGE_XP[it.s||0]+(it.q?10:0)+(it.a?2:0);});
+  x+=Object.keys(state.log).length*5+focusTotals().n*15+state.mocks.length*30;
+  return x;
+}
+function levelOf(x){let i=0;LEVELS.forEach((l,k)=>{if(x>=l[0])i=k;});return i;}
+function ctx(){
+  let r3=0,abc=0;Object.values(state.items).forEach(it=>{if(it.s>=4)r3++;if(it.a)abc++;});
+  const f=focusTotals(),s=stats(ALL);
+  return {studied:s.studied,q:s.q,r3,abc,streak:streak(),sessions:f.n,maxDay:f.max,mocks:state.mocks.length,
+    best:Math.max(0,...state.mocks.map(m=>pct(m))),
+    tallies:SYLLABUS.filter(p=>stats(p.leaves).rev===p.leaves.length).length,
+    doneAll:ids=>ids.every(id=>item(id).s>=1),revAll:ids=>ids.every(id=>item(id).s>=2),
+    questDone:!!(state.quest&&state.quest.day===today()&&state.quest.ids.length&&state.quest.ids.every(id=>item(id).t===today()))};
+}
+const pct=m=>Math.round(m.score/m.max*100);
+
+/* ---------- revision & quests ---------- */
+function dueList(){
+  const t=today(),out=[];
+  ALL.forEach(id=>{const it=item(id);if(it.s>=1&&it.s<=3&&it.t){const over=daysBetween(it.t,t)-GAP[it.s];if(over>=0)out.push({id,over});}});
+  return out.sort((a,b)=>b.over-a.over||(item(b.id).a==="A")-(item(a.id).a==="A"));
+}
+function ensureQuest(){
+  const k=today();if(state.quest&&state.quest.day===k)return;
+  const pick=[],add=id=>{if(pick.length<3&&!pick.includes(id))pick.push(id);};
+  dueList().forEach(d=>add(d.id));
+  ALL.filter(id=>item(id).a==="A"&&item(id).s===0).forEach(add);
+  SYLLABUS.slice().sort((a,b)=>stats(a.leaves).pct-stats(b.leaves).pct).forEach(p=>{const f=p.leaves.find(id=>item(id).s===0);if(f)add(f);});
+  ALL.filter(id=>item(id).s<4).forEach(add);
+  state.quest={day:k,ids:pick};
+}
+
+/* ---------- actions ---------- */
+function setItem(id,patch){
+  const before=item(id),nx=Object.assign({},before,patch);
+  if(patch.s!==undefined&&patch.s>before.s)nx.t=today();
+  if(!nx.s&&!nx.a&&!nx.q)delete state.items[id];else state.items[id]=nx;
+  const gained=(STAGE_XP[nx.s]-STAGE_XP[before.s])+((nx.q?10:0)-(before.q?10:0));
+  if(gained>0)floatXP(gained);
+  save(true);checkRewards();render();
+}
+function checkRewards(silent){
+  const c=ctx();let party=false;
+  BADGES.forEach(([id,name,,test])=>{if(!state.badges[id]&&test(c)){state.badges[id]=today();if(!silent){toast(`Badge unlocked: <b>${esc(name)}</b>`);party=true;}}});
+  SYLLABUS.forEach(p=>{const t=stats(p.leaves).rev===p.leaves.length;
+    if(t&&!state.tallied[p.id]){state.tallied[p.id]=today();if(!silent){toast(`<b>${esc(p.name)}</b> is tallied. Every entry revised.`);party=true;}}
+    if(!t&&state.tallied[p.id])delete state.tallied[p.id];});
+  const lv=levelOf(xp());
+  if(lv>state.lvl){if(!silent){toast(`Level up: <b>${LEVELS[lv][1]}</b>`);party=true;}state.lvl=lv;}
+  if(c.questDone&&state.cheer!==today()){state.cheer=today();if(!silent){toast("All three of today's quests done. <b>Lovely work.</b>");party=true;}}
+  if(party)confetti();
+  if(!silent)save(false);
+}
+
+/* ---------- feedback ---------- */
+function toast(html){
+  const box=document.getElementById("toasts"),el=document.createElement("div");
+  el.className="toast";el.innerHTML=html;box.appendChild(el);setTimeout(()=>el.remove(),4200);
+}
+function floatXP(n){
+  const lb=document.getElementById("levelbox");if(!lb)return;
+  lb.animate?.([{boxShadow:"0 0 0 0 rgba(184,137,43,.8)"},{boxShadow:"0 0 0 10px rgba(184,137,43,0)"}],{duration:600});
+}
+function confetti(){
+  if(window.matchMedia&&matchMedia("(prefers-reduced-motion: reduce)").matches)return;
+  const cv=document.getElementById("confetti"),cx=cv.getContext("2d");
+  cv.width=innerWidth;cv.height=innerHeight;
+  const cols=["#B8892B","#2A4D8F","#B23A2E","#2F7A4B","#F3D58A"];
+  const ps=Array.from({length:140},()=>({x:innerWidth/2,y:innerHeight/3,vx:(Math.random()-.5)*14,vy:Math.random()*-12-3,
+    r:Math.random()*6+3,c:cols[Math.random()*5|0],a:Math.random()*6,va:(Math.random()-.5)*.4}));
+  let f=0;(function step(){cx.clearRect(0,0,cv.width,cv.height);
+    ps.forEach(p=>{p.vy+=.35;p.x+=p.vx;p.y+=p.vy;p.a+=p.va;cx.save();cx.translate(p.x,p.y);cx.rotate(p.a);cx.fillStyle=p.c;cx.fillRect(-p.r,-p.r/2,p.r*2,p.r);cx.restore();});
+    if(++f<110)requestAnimationFrame(step);else cx.clearRect(0,0,cv.width,cv.height);})();
+}
+function beep(){try{const a=new (window.AudioContext||window.webkitAudioContext)();[0,.25,.5].forEach(t=>{const o=a.createOscillator(),g=a.createGain();
+  o.frequency.value=660+t*400;o.connect(g);g.connect(a.destination);g.gain.setValueAtTime(.15,a.currentTime+t);g.gain.exponentialRampToValueAtTime(.001,a.currentTime+t+.22);
+  o.start(a.currentTime+t);o.stop(a.currentTime+t+.25);});}catch(e){}}
+
+/* ---------- focus timer ---------- */
+const T={len:25,left:1500,end:0,run:false,iv:null};
+const fmtT=s=>String(Math.floor(s/60)).padStart(2,"0")+":"+String(s%60).padStart(2,"0");
+function tick(){
+  if(T.run){T.left=Math.max(0,Math.round((T.end-Date.now())/1000));if(T.left===0){finishTimer();return;}}
+  const c=document.getElementById("clock");if(c)c.textContent=fmtT(T.left);
+  document.title=T.run?`${fmtT(T.left)} focus`:"CA Inter Ledger";
+}
+function toggleTimer(){
+  if(T.run){T.run=false;clearInterval(T.iv);}else{T.end=Date.now()+T.left*1000;T.run=true;T.iv=setInterval(tick,500);}
+  renderMain();tick();
+}
+function finishTimer(){
+  T.run=false;clearInterval(T.iv);const k=today(),f=state.focus[k]||{m:0,n:0};f.m+=T.len;f.n++;state.focus[k]=f;
+  T.left=T.len*60;document.title="CA Inter Ledger";beep();toast(`Focus session done. <b>+15 XP</b>. Take a short break.`);
+  save(true);checkRewards();render();
+}
+
+/* ---------- rendering ---------- */
+function rowHTML(id,num,title,cls,sub){
+  const it=item(id),done=it.t===today();
+  const dots=[1,2,3,4].map(v=>`<button class="dot${it.s>=v?" on":""}${v===4?" gold":""}" data-act="stage" data-id="${id}" data-v="${v}" aria-label="${esc(title)}: mark ${STAGES[v]}" aria-pressed="${it.s>=v}" title="${STAGES[v]}"></button>`).join("");
+  return `<div class="row ${cls} s${it.s}${done?" done-today":""}"><span class="num">${num}</span><span class="title">${esc(title)}${sub?`<small>${esc(sub)}</small>`:""}</span>
+    <span class="ctrl"><span class="dots">${dots}</span><span class="stage">${STAGES[it.s]}</span>
+    <button class="abc a-${it.a||"none"}" data-act="abc" data-id="${id}" aria-label="Priority: ${it.a||"not set"}" title="ABC priority. A must do, B should do, C if time allows">${it.a||"ABC"}</button>
+    <button class="qs${it.q?" on":""}" data-act="q" data-id="${id}" aria-pressed="${it.q}" title="Tap once you've practised this chapter's questions">${it.q?"Qs done":"Qs"}</button></span></div>`;
+}
+function leafRow(id){const L=LEAF[id];return rowHTML(id,`P${L.p.no} ${L.num}`,L.title,"chap",L.parent?`${L.p.name}, ${L.parent}`:L.p.name);}
+
+function renderCover(){
+  const x=xp(),lv=levelOf(x),next=LEVELS[lv+1];
+  const prog=next?Math.round((x-LEVELS[lv][0])/(next[0]-LEVELS[lv][0])*100):100;
+  document.getElementById("levelbox").innerHTML=`<div class="rank">${LEVELS[lv][1]}</div>
+    <div class="sub"><span>Level ${lv+1} of ${LEVELS.length}</span><span>${x} XP${next?`, ${next[0]-x} to ${next[1]}`:""}</span></div>
+    <div class="xpbar"><i style="width:${prog}%"></i></div>`;
+  const fmt=n=>n>1?`${n} days`:n===1?"1 day":n===0?"Today":"Done";
+  document.getElementById("count").innerHTML=`<div><b>${fmt(daysBetween(today(),state.dates.g1))}</b><span>to Group I</span></div><div><b>${fmt(daysBetween(today(),state.dates.g2))}</b><span>to Group II</span></div>`;
+  document.getElementById("est").textContent=state.dates.set?"":"Placeholder dates until ICAI announces the schedule.";
+  document.getElementById("g1").value=state.dates.g1;document.getElementById("g2").value=state.dates.g2;
+  const st=streak();let cells="";
+  for(let i=13;i>=0;i--){const d=new Date();d.setDate(d.getDate()-i);const k=dayKey(d);cells+=`<i class="${state.log[k]?"on":""}${i===0?" today":""}" title="${k}"></i>`;}
+  document.getElementById("streak").innerHTML=`<p>${st?`Streak: ${st} day${st>1?"s":""}`:"Mark anything today to start a streak"}</p><div class="strip" aria-hidden="true">${cells}</div>`;
+  const s=stats(ALL);
+  document.getElementById("tb").innerHTML=`<caption>Trial balance</caption>
+    <tr><td>Studied at least once</td><td>${s.studied} / ${s.n}</td></tr>
+    <tr><td>Revised at least once</td><td>${s.rev} / ${s.n}</td></tr>
+    <tr><td>Practice questions done</td><td>${s.q} / ${s.n}</td></tr>
+    <tr class="total"><td>Overall progress</td><td>${s.pct}%</td></tr>`;
+  let h="";[1,2].forEach(g=>{h+=`<h2>Group ${g===1?"I":"II"}</h2>`;
+    SYLLABUS.filter(p=>p.g===g).forEach(p=>{const t=stats(p.leaves);
+      h+=`<button class="acct${tab==="papers"&&p.id===current?" sel":""}${t.rev===t.n?" tallied":""}" data-paper="${p.id}">
+        <span class="nm">${esc(p.name)}<small>Paper ${p.no}, ${t.pct}% done</small></span><span class="fig">${t.studied} / ${t.n}</span></button>`;});});
+  document.getElementById("accounts").innerHTML=h;
+}
+function renderTabs(){
+  const due=dueList().length;
+  const tabs=[["today","Today",due],["papers","Papers"],["tests","Tests"],["badges","Badges"],["guide","Guide"]];
+  document.getElementById("tabs").innerHTML=tabs.map(([k,l,n])=>`<button role="tab" data-tab="${k}" aria-selected="${tab===k}">${l}${n?`<span class="badge-dot" title="${n} revisions due">${n}</span>`:""}</button>`).join("");
+}
+
+function viewToday(){
+  ensureQuest();
+  const q=state.quest.ids,doneN=q.filter(id=>item(id).t===today()).length;
+  const n=NOTES.length?NOTES[Math.max(0,daysBetween(state.seen.start||today(),today()))%NOTES.length]:"";
+  const due=dueList(),f=state.focus[today()]||{m:0,n:0};
+  let week="";for(let i=6;i>=0;i--){const d=new Date();d.setDate(d.getDate()-i);const m=(state.focus[dayKey(d)]||{m:0}).m;
+    week+=`<div class="${i===0?"t":""}"><b style="height:${Math.min(100,m/240*100)}%"></b>${"SMTWTFS"[d.getDay()]}</div>`;}
+  const loggedToday=state.log[today()]||0;
+  return `<div class="head"><h2>${greeting()}</h2></div>
+  <p class="meta">${LEVELS[levelOf(xp())][1]}, ${xp()} XP. ${loggedToday?`${loggedToday} update${loggedToday>1?"s":""} logged today, ${f.m} focus minutes.`:"Nothing logged yet today. One quest is a great start."}</p>
+  ${n?`<div class="card note" style="margin-bottom:22px"><p>${esc(n)}</p>${NOTE_SIGNOFF?`<small>${esc(NOTE_SIGNOFF)}</small>`:""}</div>`:""}
+  <div class="card" style="margin-bottom:22px">
+    <h3>Today's three</h3>
+    <div class="questbar" aria-label="${doneN} of ${q.length} quests done">${q.map(id=>`<i class="${item(id).t===today()?"on":""}"></i>`).join("")}</div>
+    <p class="hint">Picked for you: revisions that are due first, then A priority chapters, then your least covered paper. Fill the next dot on each to clear it. A new set arrives tomorrow.</p>
+    <div class="book">${q.length?q.map(leafRow).join(""):`<p class="empty">Every entry is at Rev 3. Time for full mock tests.</p>`}</div>
+  </div>
+  <div class="grid2">
+    <div class="card"><h3>Focus timer</h3>
+      <div class="clock" id="clock">${fmtT(T.left)}</div>
+      <div class="trow">
+        <button class="primary" data-act="timer">${T.run?"Pause":T.left<T.len*60?"Resume":"Start focus"}</button>
+        <button class="ghost" data-act="treset">Reset</button>
+        <button class="pill" data-act="tlen" data-v="25" aria-pressed="${T.len===25}">25 min</button>
+        <button class="pill" data-act="tlen" data-v="50" aria-pressed="${T.len===50}">50 min</button>
+      </div>
+      <p class="hint" style="margin-top:12px">Each finished session earns 15 XP. Keep this tab open while it runs.</p>
+      <div class="week" aria-label="Focus minutes, last 7 days">${week}</div>
+    </div>
+    <div class="card"><h3>Revision due${due.length?` (${due.length})`:""}</h3>
+      <p class="hint">Revisions come due 7 days after studying, 21 days after Rev 1 and 45 days after Rev 2.</p>
+      ${due.length?`<div class="book">${due.slice(0,8).map(d=>leafRow(d.id)).join("")}</div>${due.length>8?`<p class="hint" style="margin-top:8px">And ${due.length-8} more. Clear these first.</p>`:""}`:`<p class="empty" style="padding:0">Nothing due. You're on schedule.</p>`}
+    </div>
+  </div>`;
+}
+function greeting(){const h=new Date().getHours();return h<12?"Good morning, Siddhi":h<17?"Good afternoon, Siddhi":"Good evening, Siddhi";}
+
+function passes(id){const it=item(id);
+  if(filter==="A")return it.a==="A";if(filter==="todo")return it.s===0;if(filter==="rev")return it.s===1;if(filter==="noq")return it.s>=1&&!it.q;return true;}
+function viewPaper(){
+  const p=SYLLABUS.find(x=>x.id===current),st=stats(p.leaves);
+  const fl=[["all","All"],["A","A category"],["todo","Not started"],["rev","Needs first revision"],["noq","Questions pending"]];
+  let body="";
+  p.sections.forEach((sec,si)=>{let part="";
+    sec.ch.forEach(c=>{const base=`${p.id}-${si}-${c[0]}`;
+      if(c[2]){const ids=c[2].map((u,k)=>`${base}-u${k+1}`),shown=ids.filter(passes);if(!shown.length)return;const cs=stats(ids);
+        part+=`<div class="row chap"><span class="num">${c[0]}</span><span class="title">${esc(c[1])}<small>${cs.studied} of ${ids.length} units studied</small></span><span></span></div>`;
+        ids.forEach((id,k)=>{if(passes(id))part+=rowHTML(id,`${c[0]}.${k+1}`,c[2][k],"unit");});}
+      else if(passes(base))part+=rowHTML(base,c[0],c[1],"chap");});
+    if(part)body+=(sec.t?`<div class="sec">${esc(sec.t)}</div>`:"")+part;});
+  const chips=`<div class="mchips" role="group" aria-label="Papers">${SYLLABUS.map(x=>`<button class="pill" data-paper="${x.id}" aria-pressed="${x.id===current}">P${x.no} ${esc(x.name.split(" ")[0])}</button>`).join("")}</div>`;
+  return `${chips}<div class="head"><h2>${esc(p.name)}</h2>${st.rev===st.n?`<span class="stamp">Tallied</span>`:""}</div>
+  <p class="meta">Paper ${p.no}, Group ${p.g===1?"I":"II"}. ${st.studied} of ${st.n} studied, ${st.rev} revised, ${st.pct}% overall.</p>
+  <div class="bar" role="progressbar" aria-valuenow="${st.pct}" aria-valuemin="0" aria-valuemax="100" aria-label="Paper progress"><i style="width:${st.pct}%"></i></div>
+  <div class="filters" role="group" aria-label="Filter">${fl.map(([k,l])=>`<button class="pill" data-filter="${k}" aria-pressed="${filter===k}">${l}</button>`).join("")}</div>
+  <p class="hint">Dots go studied, Rev 1, Rev 2, Rev 3. Tap a filled dot again to step back. <button data-tab="guide">How this works</button></p>
+  <div class="book">${body||`<p class="empty">Nothing matches this filter. Choose All to see every chapter.</p>`}</div>`;
+}
+
+function latestFor(pid){return state.mocks.filter(m=>m.p===pid).sort((a,b)=>b.date.localeCompare(a.date))[0];}
+function viewTests(){
+  const opts=SYLLABUS.map(p=>`<option value="${p.id}">P${p.no} ${esc(p.name)}</option>`).join("");
+  const rows=state.mocks.slice().sort((a,b)=>b.date.localeCompare(a.date)).map(m=>{const p=SYLLABUS.find(x=>x.id===m.p),v=pct(m);
+    return `<tr><td>${m.date}</td><td>P${p.no} ${esc(p.name)}</td><td>${esc(m.type)}</td><td>${m.score} / ${m.max}</td>
+      <td><span class="tag ${v>=60?"ex":v>=40?"pass":"fail"}">${v>=60?"Exemption":v>=40?"Pass":"Below 40"} ${v}%</span></td>
+      <td><button class="x" data-act="delmock" data-mid="${m.id}" aria-label="Delete this test">×</button></td></tr>`;}).join("");
+  const groupCheck=g=>{const ps=SYLLABUS.filter(p=>p.g===g),ls=ps.map(p=>latestFor(p.id));
+    if(ls.some(l=>!l))return `Log a test in all three Group ${g===1?"I":"II"} papers to see a pass projection.`;
+    const sc=ls.map(pct),tot=sc.reduce((a,b)=>a+b,0),ok=sc.every(s=>s>=40)&&tot>=150;
+    return `Latest scores ${sc.join(", ")}, total ${tot} of 300. ${ok?"That clears Group "+(g===1?"I":"II")+".":sc.some(s=>s<40)?"One paper is below 40, so that's the one to push.":"Each paper is above 40 but the total needs 150."}`;};
+  const best=SYLLABUS.map(p=>{const ms=state.mocks.filter(m=>m.p===p.id);if(!ms.length)return "";const b=Math.max(...ms.map(pct));
+    return `<tr><td>P${p.no} ${esc(p.name)}</td><td>${ms.length}</td><td>${b}%</td><td>${pct(latestFor(p.id))}%</td></tr>`;}).join("");
+  return `<div class="head"><h2>Test scores</h2></div>
+  <p class="meta">Log coaching tests, ICAI MTPs and RTPs, and past papers. Each logged test earns 30 XP.</p>
+  <div class="card" style="margin-bottom:22px"><h3>Add a test</h3>
+    <div class="form">
+      <label>Paper<select id="mkP">${opts}</select></label>
+      <label>Type<select id="mkT">${TEST_TYPES.map(t=>`<option>${t}</option>`).join("")}</select></label>
+      <label>Date<input type="date" id="mkD" value="${today()}"></label>
+      <label>Marks scored<input type="number" id="mkS" min="0" step="0.5" inputmode="decimal"></label>
+      <label>Out of<input type="number" id="mkM" min="1" value="100" inputmode="decimal"></label>
+      <button class="primary" data-act="addmock">Add test</button>
+    </div>
+    <p class="hint" id="mkErr" style="margin:10px 0 0"></p>
+  </div>
+  <div class="grid2">
+    <div class="card"><h3>Group I check</h3><p style="margin:0">${groupCheck(1)}</p></div>
+    <div class="card"><h3>Group II check</h3><p style="margin:0">${groupCheck(2)}</p></div>
+  </div>
+  <p class="hint">To pass a group you need 40 in each paper and 150 across the three. 60 or more in a paper is an exemption.</p>
+  ${best?`<div class="card scroll" style="margin-bottom:22px"><h3>By paper</h3><table class="mk"><tr><th>Paper</th><th>Tests</th><th>Best</th><th>Latest</th></tr>${best}</table></div>`:""}
+  <div class="card scroll"><h3>All tests</h3>${rows?`<table class="mk"><tr><th>Date</th><th>Paper</th><th>Type</th><th>Marks</th><th>Result</th><th></th></tr>${rows}</table>`:`<p class="empty" style="padding:0">No tests yet. Add your first one above.</p>`}</div>`;
+}
+
+function viewBadges(){
+  const got=BADGES.filter(b=>state.badges[b[0]]).length,x=xp(),lv=levelOf(x);
+  return `<div class="head"><h2>Badges</h2></div>
+  <p class="meta">${got} of ${BADGES.length} unlocked. ${x} XP so far.</p>
+  <div class="badges" style="margin-bottom:28px">${BADGES.map(([id,name,desc])=>{const d=state.badges[id];
+    return `<div class="bdg${d?" got":""}"><span class="seal" aria-hidden="true">${d?"★":"?"}</span><span><b>${esc(name)}</b><small>${esc(desc)}</small>${d?`<small>Unlocked ${d}</small>`:""}</span></div>`;}).join("")}</div>
+  <div class="card"><h3>Level ladder</h3><ul class="ladder">${LEVELS.map((l,i)=>`<li class="${i===lv?"cur":i<lv?"past":""}"><span>${i+1}. ${l[1]}</span><span>${l[0]} XP</span></li>`).join("")}</ul></div>`;
+}
+
+function viewGuide(){
+  return `<div class="guide">
+  <div class="head"><h2>How to use this</h2></div>
+  <p class="meta">Everything in one place. <button class="ghost" data-act="tour">Show me around again</button></p>
+  <section><h3>The basics</h3>
+    <ol>
+      <li>Pick a paper from the list on the left (on a phone it's above). Each paper opens like a page in a ledger.</li>
+      <li>Every chapter, or unit for the bigger chapters, has four dots. The first means you've studied it. The next three are your first, second and third revisions. The last dot is gold.</li>
+      <li>Tapping a dot fills everything up to it. Tapping a filled dot steps it back one, so mistakes are easy to undo.</li>
+      <li><b>ABC</b> sets priority the way coaching teachers do: A is must do, B is should do, C is if time allows. Tap to cycle through.</li>
+      <li><b>Qs</b> is separate from reading. Tap it once you've practised that chapter's questions from the study material or question bank.</li>
+      <li>Filters at the top of each paper show only A chapters, things not started, things waiting for a first revision, or chapters whose questions are pending.</li>
+    </ol></section>
+  <section><h3>A good daily rhythm</h3>
+    <ol>
+      <li>Open <b>Today</b>. Clear the three quests. They're picked automatically: overdue revisions first, then A chapters, then whichever paper is furthest behind.</li>
+      <li>Start a focus session before each block of study. 25 minutes for lighter days, 50 for deep work.</li>
+      <li>Check <b>Revision due</b>. Spacing revisions out is what makes things stick in May, so these are worth clearing before new chapters.</li>
+      <li>After any test, log it in <b>Tests</b>. The group check tells you whether those scores would clear the group.</li>
+    </ol></section>
+  <section><h3>XP, levels and badges</h3>
+    <table class="xp-table">
+      <tr><td>Study a chapter</td><td>20 XP</td></tr><tr><td>First revision</td><td>15 XP more</td></tr>
+      <tr><td>Second and third revisions</td><td>10 XP each</td></tr><tr><td>Practice questions done</td><td>10 XP</td></tr>
+      <tr><td>Setting an ABC priority</td><td>2 XP</td></tr><tr><td>Focus session finished</td><td>15 XP</td></tr>
+      <tr><td>Test logged</td><td>30 XP</td></tr><tr><td>Each day you log anything</td><td>5 XP</td></tr>
+    </table>
+    <p>There are ${LEVELS.length} levels, from ${LEVELS[0][1]} to ${LEVELS[LEVELS.length-1][1]}, and ${BADGES.length} badges to collect. A paper earns a gold double underline and a Tallied stamp once every entry in it has at least one revision, like a balanced account.</p></section>
+  <section><h3>Exam rules worth remembering</h3>
+    <ul><li>Each group has three papers of 100 marks.</li><li>To pass a group: at least 40 in every paper and 150 in total across the three.</li>
+    <li>60 or more in a single paper earns an exemption in that paper even if the group isn't cleared.</li>
+    <li>Set the exact exam dates on the left once ICAI announces the schedule, so the countdown is right.</li></ul></section>
+  <section><h3>Keeping progress safe</h3>
+    <p>Progress saves to a private Google Sheet, so it's there every time you open the link, even in a private window. The line at the bottom left says whether the last change was saved.</p>
+    <p>For extra safety, download a backup now and then. You can restore it here too.</p>
+    <div class="trow"><button class="ghost" data-act="export">Download backup</button><button class="ghost" data-act="import">Restore from backup</button></div></section>
+  <section><h3>Setup (for Varun)</h3>
+    <ol><li>Create a Google Sheet, open Extensions then Apps Script, and paste in <code>Code.gs</code>.</li>
+      <li>Deploy as a web app: execute as yourself, access for anyone. Copy the URL ending in <code>/exec</code>.</li>
+      <li>Paste it into <code>SYNC_URL</code> near the top of the script in <code>index.html</code>.</li>
+      <li>Change <code>NOTES</code> right below it to your own lines. One shows each day on her Today page.</li>
+      <li>Deploy to Vercel and send her the link.</li></ol>
+    <p>Status right now: ${SYNC_URL?"syncing is on.":"syncing is off, so progress lives only in this browser."}</p></section>
+  </div>`;
+}
+
+function renderMain(){
+  const v={today:viewToday,papers:viewPaper,tests:viewTests,badges:viewBadges,guide:viewGuide}[tab];
+  document.getElementById("main").innerHTML=v();
+}
+function render(){renderCover();renderTabs();renderMain();}
+
+/* ---------- welcome & tour ---------- */
+function welcome(){
+  const m=document.createElement("div");m.className="modal";m.id="welcome";
+  m.innerHTML=`<div class="box" role="dialog" aria-modal="true" aria-labelledby="wt"><h3 id="wt">Welcome, Siddhi</h3>
+    <p>This is your ledger for CA Inter. Every chapter of all six papers is in here, straight from your ICAI study material.</p>
+    <p>Mark what you study and revise, earn XP, keep your streak going, and watch each paper tally up before May.</p>
+    <div class="trow"><button class="primary" data-act="tour">Show me around</button><button class="ghost" data-act="skipwelcome">I'll explore myself</button></div></div>`;
+  document.body.appendChild(m);m.querySelector(".primary").focus();
+}
+const TOUR=[
+  [innerWidth<=860?".mchips":"#accounts","Your six papers live here. Tap one to open its chapters.","papers"],
+  [".book .dots","Tap the dots as you go: studied, then revisions 1, 2 and 3. Tap a filled dot again to undo.","papers"],
+  [".book .abc","Set ABC priority. A is must do, C is if time allows.","papers"],
+  [".book .qs","Tap this once you've practised that chapter's questions.","papers"],
+  ["#levelbox","Everything you mark earns XP. Climb ten levels on the way to May.","papers"],
+  ["[data-tab=today]","Your daily three, revisions that are due, and a focus timer. Start here each day.","papers"],
+  ["[data-tab=tests]","Log test scores here to see if they'd clear the group.","papers"],
+  ["[data-tab=guide]","The full guide is always here. All the best, you've got this.","papers"]
+];
+function tour(i){
+  endTour();
+  if(i>=TOUR.length){state.seen.welcome=true;save(false);tab="today";render();toast("You're all set. <b>Good luck!</b>");return;}
+  const [sel,text,t]=TOUR[i];if(tab!==t){tab=t;render();}
+  const el=document.querySelector(sel);if(!el){tour(i+1);return;}
+  el.scrollIntoView({block:"center"});
+  const dim=document.createElement("div");dim.id="tourDim";document.body.appendChild(dim);
+  el.classList.add("spot");
+  const b=document.createElement("div");b.id="tourBox";b.setAttribute("role","dialog");
+  b.innerHTML=`<p class="step">${i+1} of ${TOUR.length}</p><p>${text}</p><div class="trow"><button class="primary" data-act="tnext" data-v="${i+1}">${i===TOUR.length-1?"Finish":"Next"}</button><button class="ghost" data-act="tskip">Skip tour</button></div>`;
+  document.body.appendChild(b);
+  requestAnimationFrame(()=>{const r=el.getBoundingClientRect(),bh=b.offsetHeight,bw=b.offsetWidth;
+    let top=r.bottom+12;if(top+bh>innerHeight-12)top=Math.max(12,r.top-bh-12);
+    b.style.top=top+"px";b.style.left=Math.min(Math.max(12,r.left),innerWidth-bw-12)+"px";b.querySelector(".primary").focus();});
+}
+function endTour(){["tourDim","tourBox","welcome"].forEach(id=>document.getElementById(id)?.remove());document.querySelectorAll(".spot").forEach(e=>e.classList.remove("spot"));}
+
+/* ---------- events ---------- */
+document.addEventListener("click",e=>{
+  const t=e.target.closest("button");if(!t)return;const d=t.dataset;
+  if(d.tab){tab=d.tab;render();return;}
+  if(d.paper){current=d.paper;tab="papers";render();if(innerWidth<=860)document.querySelector("main").scrollIntoView({behavior:"smooth",block:"start"});return;}
+  if(d.filter){filter=d.filter;renderMain();return;}
+  switch(d.act){
+    case "stage":{const it=item(d.id),v=+d.v;setItem(d.id,{s:it.s===v?v-1:v});break;}
+    case "abc":{const o=["","A","B","C"],it=item(d.id);setItem(d.id,{a:o[(o.indexOf(it.a)+1)%4]});break;}
+    case "q":setItem(d.id,{q:!item(d.id).q});break;
+    case "timer":toggleTimer();break;
+    case "treset":T.run=false;clearInterval(T.iv);T.left=T.len*60;document.title="CA Inter Ledger";renderMain();break;
+    case "tlen":if(!T.run){T.len=+d.v;T.left=T.len*60;renderMain();}else toast("Pause the timer to change its length.");break;
+    case "addmock":{const s=parseFloat(document.getElementById("mkS").value),m=parseFloat(document.getElementById("mkM").value),dt=document.getElementById("mkD").value;
+      const err=document.getElementById("mkErr");
+      if(isNaN(s)||isNaN(m)||m<=0||s<0||s>m){err.textContent="Enter the marks scored and the total, with marks no higher than the total.";break;}
+      if(!dt){err.textContent="Pick the date of the test.";break;}
+      state.mocks.push({id:Date.now().toString(36),p:document.getElementById("mkP").value,type:document.getElementById("mkT").value,date:dt,score:s,max:m});
+      toast(`Test logged. <b>+30 XP</b>`);save(true);checkRewards();render();break;}
+    case "delmock":if(confirm("Delete this test score?")){state.mocks=state.mocks.filter(m=>m.id!==d.mid);save(false);render();}break;
+    case "export":{const a=document.createElement("a");a.href=URL.createObjectURL(new Blob([JSON.stringify(state)],{type:"application/json"}));
+      a.download=`ca-inter-backup-${today()}.json`;document.body.appendChild(a);a.click();a.remove();break;}
+    case "import":document.getElementById("importFile").click();break;
+    case "tour":tour(0);break;
+    case "tnext":tour(+d.v);break;
+    case "tskip":case "skipwelcome":endTour();state.seen.welcome=true;save(false);render();break;
+  }
+});
+document.addEventListener("keydown",e=>{if(e.key==="Escape"&&(document.getElementById("tourBox")||document.getElementById("welcome"))){endTour();state.seen.welcome=true;save(false);}});
+document.getElementById("importFile").addEventListener("change",async e=>{
+  const f=e.target.files[0];if(!f)return;
+  try{const d=JSON.parse(await f.text());if(!d.items)throw 0;
+    if(confirm("Replace current progress with this backup?")){state=normalise(d);save(false);checkRewards(true);render();toast("Backup restored.");}}
+  catch(err){toast("That file isn't a backup from this tracker.");}
+  e.target.value="";
+});
+document.getElementById("editDates").addEventListener("click",e=>{const o=document.getElementById("dates").classList.toggle("open");e.currentTarget.setAttribute("aria-expanded",o);});
+["g1","g2"].forEach(k=>document.getElementById(k).addEventListener("change",e=>{if(!e.target.value)return;state.dates[k]=e.target.value;state.dates.set=true;save(false);renderCover();}));
+document.addEventListener("visibilitychange",()=>{if(!document.hidden&&primed){ensureQuest();render();}});
+
+render();
+pull();
+</script>
+</body>
+</html>
