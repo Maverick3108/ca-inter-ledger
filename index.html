@@ -181,6 +181,16 @@ table.mk td{padding:7px 8px;border-bottom:1px solid var(--rule)}
 .modal .box{background:var(--sheet);border-radius:10px;padding:26px;max-width:460px;width:100%}
 .modal h3{font-size:1.6rem}
 .modal .trow{margin-top:18px}
+#revpop .box{max-width:560px;max-height:86vh;display:flex;flex-direction:column}
+#revpop .lead{color:var(--muted);margin:0}
+.rvlist{overflow:auto;margin:14px 0 4px;border-top:1px solid var(--rule)}
+.rv{display:flex;justify-content:space-between;gap:12px;align-items:center;padding:11px 0;border-bottom:1px solid var(--rule)}
+.rv b{display:block;font-weight:600}
+.rv small{display:block;color:var(--muted);font-size:.8rem}
+.rv small.late{color:var(--red)}
+.sm{padding:6px 12px;font-size:.85rem;white-space:nowrap}
+.alldone{font-family:var(--serif);font-size:1.15rem;padding:18px 0}
+@media (max-width:520px){.rv{flex-wrap:wrap}.rv .sm{width:100%}}
 #tourDim{position:fixed;inset:0;background:rgba(15,25,20,.45);z-index:85}
 .spot{position:relative;z-index:86;box-shadow:0 0 0 4px var(--gold),0 0 0 9999px rgba(0,0,0,0)!important;border-radius:6px;background:inherit}
 #tourBox{position:fixed;z-index:90;background:var(--sheet);border-radius:10px;padding:16px 18px;width:min(320px,calc(100vw - 24px));box-shadow:0 10px 30px rgba(0,0,0,.3)}
@@ -250,6 +260,219 @@ const NOTES = [
   "CA Siddhi has a beautiful ring to it, doesn't it? Keep going, we're almost there."
 ];
 const NOTE_SIGNOFF = "Varun";
+/* Dated notes, one per day from 5 Oct 2026 to 30 Apr 2027. On days without one, NOTES above rotate instead. */
+const DATED_NOTES = {
+  "2026-10-05": "Day one of the CA Inter countdown. Seven months, one goal, and me cheering for you every single day. Let's begin.",
+  "2026-10-06": "Day two. The fact that you showed up again is already the whole secret.",
+  "2026-10-07": "You don't have to love every chapter. You just have to visit it today.",
+  "2026-10-08": "Small reminder: the moon doesn't rush its phases, and it still lights up the whole sky.",
+  "2026-10-09": "One topic finished properly beats three topics skimmed. Go deep today.",
+  "2026-10-10": "Your pens deserve a good story. Write today's notes like they're going to be framed.",
+  "2026-10-11": "Tax looks scary because of the numbers. You love numbers. That's your advantage.",
+  "2026-10-12": "Every adjustment entry you crack today is one less surprise in May.",
+  "2026-10-13": "If today feels heavy, do the smallest task first. Momentum is real.",
+  "2026-10-14": "You took on Foundation with everything going on around you. Inter doesn't stand a chance.",
+  "2026-10-15": "Drink water, fix your posture, then open the book. In that order.",
+  "2026-10-16": "Statistically speaking, consistency beats intensity. You know that better than anyone.",
+  "2026-10-17": "Somewhere in Bengaluru someone is very proud of you right now. Hint: it's me.",
+  "2026-10-18": "Sections and case laws are just stories with rules. Read them like stories today.",
+  "2026-10-19": "Reward yourself after the hard chapter, not before. It tastes better that way.",
+  "2026-10-20": "You're not behind. You're exactly where day nineteen of something big should be.",
+  "2026-10-21": "Close the doubts tab in your head for one hour. Just solve.",
+  "2026-10-22": "Costing is basically data about a factory. You were made for this.",
+  "2026-10-23": "Nine months of us today. Nine months ago I didn't know I'd be writing study notes for my favourite person. Now go make today count.",
+  "2026-10-24": "Today's goal: the chapter you've been avoiding. Just start the first page.",
+  "2026-10-25": "The stars you love are light from long ago. The work you do today will shine in May.",
+  "2026-10-26": "Got something wrong today? Good. Now you know it before the exam does.",
+  "2026-10-27": "Write one formula on a sticky note and put it somewhere you'll see it ten times today.",
+  "2026-10-28": "Your brain is a muscle. Today is leg day for it.",
+  "2026-10-29": "Break the day into three blocks. Win each block. That's it.",
+  "2026-10-30": "A tiny win counts. A tiny win every day counts a lot.",
+  "2026-10-31": "End of October. Look back at what you did, not at what's left.",
+  "2026-11-01": "New month, clean page. Pick your best pen and plan it.",
+  "2026-11-02": "Audit teaches you to question everything. Except yourself. Trust yourself.",
+  "2026-11-03": "Advanced Accounting is just accounting that went to the gym. You can handle it.",
+  "2026-11-04": "You're allowed to be tired. Rest, then return. That's the deal.",
+  "2026-11-05": "Do one past paper question today without peeking at the solution first.",
+  "2026-11-06": "Revise yesterday for ten minutes before starting today. Memory loves that.",
+  "2026-11-07": "GST is a puzzle with a logic to it. Find the logic and the rest follows.",
+  "2026-11-08": "Happy Diwali! Light a diya for every chapter you've finished so far. Take it easy today, you've earned it.",
+  "2026-11-09": "Back to the desk. Festival energy, exam focus.",
+  "2026-11-10": "You're stronger than the syllabus. It just doesn't know it yet.",
+  "2026-11-11": "Strong morning or strong evening, just make it a strong day overall.",
+  "2026-11-12": "One page of neat notes is worth ten pages of messy ones. You're the neat notes queen.",
+  "2026-11-13": "Foundation is behind you. Whatever the result says, the girl who studied that hard is now on Inter.",
+  "2026-11-14": "FM is just asking \"is this worth the money?\" over and over. You already think like that.",
+  "2026-11-15": "If you can explain it to me, you know it. Explain one concept to me tonight.",
+  "2026-11-16": "Halfway through November. Look how far you've come since October.",
+  "2026-11-17": "Laws change, logic doesn't. Understand why the section exists.",
+  "2026-11-18": "Practice beats perfection. Solve, check, correct, repeat.",
+  "2026-11-19": "The universe is 13.8 billion years old and still expanding. You get to keep growing too.",
+  "2026-11-20": "Protect your focus today like it's your favourite pen.",
+  "2026-11-21": "Mistakes in practice are free. Make them all now.",
+  "2026-11-22": "You're building something most people quit halfway. Keep building.",
+  "2026-11-23": "Ten months of us. Ten months of you being braver than you give yourself credit for. Happy us day.",
+  "2026-11-24": "Short break every 50 minutes. Long focus every day.",
+  "2026-11-25": "Costing chapter today? Draw it as a flowchart. Your brain loves visuals.",
+  "2026-11-26": "Celebrate finishing a chapter like it's a tiny birthday. It kind of is.",
+  "2026-11-27": "Tired eyes? Five minutes looking at the sky. Then back.",
+  "2026-11-28": "The difference between good and great is revision. Revise one old topic today.",
+  "2026-11-29": "Last week of November. Finish the month strong.",
+  "2026-11-30": "One more chapter closed this month means one less to worry about in March.",
+  "2026-12-01": "December. You're ending this year as a CA Inter student who actually does the work.",
+  "2026-12-02": "Group 1 or Group 2, pick one today and give it your full attention.",
+  "2026-12-03": "Reread your mistake list today. It's your personal exam guide.",
+  "2026-12-04": "Amalgamation, consolidation, all of it sounds dramatic. It's just rules. You've got this.",
+  "2026-12-05": "Your future self in May is cheering for this exact study session.",
+  "2026-12-06": "Studying alone isn't lonely when someone is rooting for every page. I am.",
+  "2026-12-07": "Make a one page summary of a chapter today. Future you will thank you.",
+  "2026-12-08": "The moon looks small but it moves oceans. Small consistent hours move results.",
+  "2026-12-09": "If the plan breaks today, make a smaller plan. Just don't drop it.",
+  "2026-12-10": "Ethics in audit: easy marks if you know the standards. Go collect them.",
+  "2026-12-11": "You're not studying for marks. You're studying for the person you're becoming.",
+  "2026-12-12": "Time yourself today. Speed is a skill too.",
+  "2026-12-13": "Fresh week. Fresh energy. Same goal.",
+  "2026-12-14": "SM theory is common sense written formally. Read it like a business story.",
+  "2026-12-15": "Your handwriting in the exam matters. Practise one clean answer today.",
+  "2026-12-16": "Hard days build the confidence easy days can't.",
+  "2026-12-17": "Stuck? Mark it, move on, come back with fresh eyes.",
+  "2026-12-18": "Ratio analysis is data storytelling. Your favourite kind.",
+  "2026-12-19": "Two and a half months of showing up. That's not luck, that's discipline.",
+  "2026-12-20": "You're allowed to slow down. Just keep facing forward.",
+  "2026-12-21": "Every sum you solve today is a vote for the CA you'll become.",
+  "2026-12-22": "Holiday vibes everywhere. Your vibe: quiet focus. May you will love it.",
+  "2026-12-23": "Eleven months today. Almost a whole year of you and me. Study a little, smile a lot.",
+  "2026-12-24": "Write down three things you understood better this month.",
+  "2026-12-25": "Give one old topic a quick revision lap today.",
+  "2026-12-26": "Almost a new year. Close this one with a solid study day.",
+  "2026-12-27": "You did more this year than most people do in three. Remember that.",
+  "2026-12-28": "Keep your desk tidy tonight. A clean start helps tomorrow.",
+  "2026-12-29": "Revise tax rates and thresholds today. Little numbers, big marks.",
+  "2026-12-30": "Deep breath. You're doing better than you think.",
+  "2026-12-31": "Last day of 2026. You're ending it as a CA Inter student with a plan and the discipline to follow it. So proud of you.",
+  "2027-01-01": "Happy New Year! 2027 is the year you clear CA Inter. Write that down with your favourite pen.",
+  "2027-01-02": "Day two of 2027. Keep the resolution alive by just doing today.",
+  "2027-01-03": "Four months to go. Plenty of time if you use it well, and you are.",
+  "2027-01-04": "Start a revision cycle this month. First reading is learning, second is owning.",
+  "2027-01-05": "Mock tests aren't judgments. They're maps.",
+  "2027-01-06": "You're sharper in January than you were in October. Notice that.",
+  "2027-01-07": "Today: one section of a question paper under timed conditions.",
+  "2027-01-08": "Corporate law is about why companies behave the way they do. Ask why for each section.",
+  "2027-01-09": "Cold morning, warm chai, open books. A good combo.",
+  "2027-01-10": "Make your weakest subject your project this week.",
+  "2027-01-11": "It's okay if a chapter takes two days. It's not okay to skip it.",
+  "2027-01-12": "Good food, sweet things, then back to sums. Balance.",
+  "2027-01-13": "Track your study hours today. Data doesn't lie, and you love data.",
+  "2027-01-14": "The best students aren't the ones who never fall. They're the ones who get back up fastest.",
+  "2027-01-15": "Your notes are your superpower. Keep them updated.",
+  "2027-01-16": "Every planet stays in orbit by constantly moving. Keep moving.",
+  "2027-01-17": "Practise one audit report format today until you can write it from memory.",
+  "2027-01-18": "Small reminder that you're incredibly capable. Now go prove it to the textbook.",
+  "2027-01-19": "Variance analysis: once it clicks, it's fun. Today it clicks.",
+  "2027-01-20": "Revise formulas before bed. Sleep does the filing.",
+  "2027-01-21": "Mid January. Proud of you for every single day so far.",
+  "2027-01-22": "Whatever you struggled with last month, try it again today. You've grown.",
+  "2027-01-23": "One year of us. 23 January, 1:08 AM, still my favourite timestamp. Thank you for this year. Now let's go win 2027 together.",
+  "2027-01-24": "Your consistency is the most attractive thing about you. Okay, second most.",
+  "2027-01-25": "New week. Set three targets, not ten.",
+  "2027-01-26": "Don't compare your chapter five to someone else's chapter ten.",
+  "2027-01-27": "Group 2 day. Give it some love.",
+  "2027-01-28": "An exam is just questions. You've been answering questions all your life.",
+  "2027-01-29": "One more mock done means one less nervous feeling in May.",
+  "2027-01-30": "Close January with a full revision of one subject.",
+  "2027-01-31": "Four months of studying. Look at that streak.",
+  "2027-02-01": "February. Three months left. This is where toppers are made.",
+  "2027-02-02": "Make revision your main job now and new learning your side job.",
+  "2027-02-03": "Write mock answers like the examiner is tired. Make it easy to give you marks.",
+  "2027-02-04": "You're closer to May than to October now. Let that sink in.",
+  "2027-02-05": "Pick the topic that scares you most. Defeat it before the week ends.",
+  "2027-02-06": "Quick game: say one thing you know about each of your six papers. Easy, right?",
+  "2027-02-07": "Rest is part of the plan. Sleep well tonight.",
+  "2027-02-08": "Future clients will trust you with their money. You're earning that trust today.",
+  "2027-02-09": "Underline less, understand more.",
+  "2027-02-10": "Every hour now is worth more than an hour in October. Use it well.",
+  "2027-02-11": "Presentation practice today: working notes, neat totals, clear headings.",
+  "2027-02-12": "You're not just studying, you're building a career. Lay one more brick.",
+  "2027-02-13": "Tough day? Do the minimum and still count it as a win.",
+  "2027-02-14": "Happy Valentine's Day. My favourite thing about you is how hard you work for your dreams. Biggest fan, always.",
+  "2027-02-15": "Look up at the moon tonight. Same moon over Chennai and Bengaluru. Same team.",
+  "2027-02-16": "Mock review is where marks are actually gained. Review slowly.",
+  "2027-02-17": "You've already proved you can do hard things. This is just another one.",
+  "2027-02-18": "Revise auditing standards today. Small facts, solid marks.",
+  "2027-02-19": "Keep your focus on the next question, not the whole paper.",
+  "2027-02-20": "GST and income tax side by side today. Notice the patterns.",
+  "2027-02-21": "A few more weeks of effort, a lifetime of being CA Inter qualified.",
+  "2027-02-22": "Your best is enough. Just bring it today.",
+  "2027-02-23": "Thirteen months together. Your dedication still amazes me every single day.",
+  "2027-02-24": "End of week check: what went well? Do more of that.",
+  "2027-02-25": "Read the amendments today. Examiners love them.",
+  "2027-02-26": "Eat properly. Brains run on food, not stress.",
+  "2027-02-27": "Every topic you revise now is a gift to May you.",
+  "2027-02-28": "Last days of February. Close the month with your strongest revision.",
+  "2027-03-01": "March. The final full month of preparation. Let's make it legendary.",
+  "2027-03-02": "Two months to go. Steady beats frantic.",
+  "2027-03-03": "Full length mock this week. Treat it like the real thing.",
+  "2027-03-04": "Your weak areas from mocks are your to do list now.",
+  "2027-03-05": "Pressure makes diamonds. You're already shining.",
+  "2027-03-06": "Revise, test, fix. Revise, test, fix.",
+  "2027-03-07": "Don't learn anything brand new without revising the old first.",
+  "2027-03-08": "You know more than you think. Write one answer and you'll see.",
+  "2027-03-09": "Breathe in for four, out for four. Then begin.",
+  "2027-03-10": "Costing and FM share a lot of ideas. Link them in your head today.",
+  "2027-03-11": "Your effort will show up in May even if you can't see it today.",
+  "2027-03-12": "Phone away for one full block today. Just you and the paper.",
+  "2027-03-13": "You're the main character of this story. Main characters finish strong.",
+  "2027-03-14": "Revise the chapters you did in October. Say hello to old friends.",
+  "2027-03-15": "It's fine to feel nervous. It means this matters to you.",
+  "2027-03-16": "Make your final revision notes extra short and extra clear.",
+  "2027-03-17": "Another mock, another lesson. Keep collecting.",
+  "2027-03-18": "Every galaxy began as tiny particles coming together. So do ranks.",
+  "2027-03-19": "Mid March. The finish line is in sight.",
+  "2027-03-20": "You've been brave for months. A few more weeks of brave.",
+  "2027-03-21": "Stick to your timetable today even if you don't feel like it.",
+  "2027-03-22": "Be kind to yourself after a tough mock. Then fix it.",
+  "2027-03-23": "Fourteen months of us. A few weeks to the exam. You're doing beautifully.",
+  "2027-03-24": "Sleep, food, water, revision. The four pillars of March.",
+  "2027-03-25": "Every paper has easy marks. Train yourself to grab them first.",
+  "2027-03-26": "Speed drill today: same questions, less time.",
+  "2027-03-27": "Five weeks to go. Each one counts.",
+  "2027-03-28": "Revisit your mistake list. Notice how short it's gotten.",
+  "2027-03-29": "You're doing something extraordinary. Don't let tiredness tell you otherwise.",
+  "2027-03-30": "Final days of March. Aim for one complete lap of all six papers.",
+  "2027-03-31": "You've got this. Not as a slogan, as a fact.",
+  "2027-04-01": "April. The month that turns effort into confidence.",
+  "2027-04-02": "Final stretch. Protect your sleep and your peace.",
+  "2027-04-03": "Revise, don't panic. You've already learned it.",
+  "2027-04-04": "One full mock per subject this month if you can.",
+  "2027-04-05": "Look at your notebooks. Look at all that work. That's yours.",
+  "2027-04-06": "Keep it simple: one subject, one block, full focus.",
+  "2027-04-07": "You're ready for more than you think.",
+  "2027-04-08": "Tiny formula cards today. Read them on every break.",
+  "2027-04-09": "No new books now. Trust your own notes.",
+  "2027-04-10": "You've studied since October. The hard part is behind you.",
+  "2027-04-11": "Practise writing neatly at speed. Presentation is marks.",
+  "2027-04-12": "Stay off the comparison game. Your prep is your prep.",
+  "2027-04-13": "The moon is never in a hurry and never late. Neither are you.",
+  "2027-04-14": "Calm mind, clear answers.",
+  "2027-04-15": "Halfway through April. Proud is an understatement.",
+  "2027-04-16": "Revise your weakest topic once more. Then let it go.",
+  "2027-04-17": "Picture yourself in the exam hall, calm and quick. That's you.",
+  "2027-04-18": "Start matching your study hours to exam timings from today.",
+  "2027-04-19": "Your effort is already counted. Now you just show it.",
+  "2027-04-20": "Eat well, sleep early, revise light.",
+  "2027-04-21": "Every page you read now is pure confidence.",
+  "2027-04-22": "Steady hands, steady mind.",
+  "2027-04-23": "Fifteen months of us. Almost exam time. Whatever happens, I'm right here.",
+  "2027-04-24": "One last look at the amendments.",
+  "2027-04-25": "Final mock if you're feeling it. Rest if you're not. Both are right.",
+  "2027-04-26": "You've built this for seven months. It's not going anywhere.",
+  "2027-04-27": "Run through your exam day checklist in your head. Details matter.",
+  "2027-04-28": "Light revision, positive thoughts, early night.",
+  "2027-04-29": "You are so ready. I'm so proud.",
+  "2027-04-30": "Last day of April. You've done the work. Walk into May knowing you belong in that hall. All the best, my love."
+};
+/* Quests alternate groups daily. This date is a Group I day. */
+const QUEST_ANCHOR = "2026-10-05";
 /* ===== End of settings ===== */
 
 const LS_KEY = "ca-inter-ledger-v1";
@@ -399,7 +622,7 @@ async function pull(){
   }catch(e){setSync("Couldn't reach the save sheet. Anything you mark now lasts only until this tab closes.");}
   afterLoad();
 }
-function afterLoad(){primed=true;if(!state.seen.start)state.seen.start=today();ensureQuest();checkRewards(true);render();if(!state.seen.welcome)welcome();}
+function afterLoad(){primed=true;if(!state.seen.start)state.seen.start=today();ensureQuest();checkRewards(true);render();if(!state.seen.welcome)welcome();else revPopup();}
 
 /* ---------- numbers ---------- */
 function stats(ids){
@@ -436,14 +659,19 @@ function dueList(){
   ALL.forEach(id=>{const it=item(id);if(it.s>=1&&it.s<=3&&it.t){const over=daysBetween(it.t,t)-GAP[it.s];if(over>=0)out.push({id,over});}});
   return out.sort((a,b)=>b.over-a.over||(item(b.id).a==="A")-(item(a.id).a==="A"));
 }
+function questGroup(day){return Math.abs(daysBetween(QUEST_ANCHOR,day||today()))%2===0?1:2;}
+function pickFor(p){
+  const due=dueList().filter(d=>LEAF[d.id].p===p);if(due.length)return due[0].id;
+  const L=p.leaves;
+  return L.find(id=>item(id).a==="A"&&item(id).s===0)||L.find(id=>item(id).s===0)||L.slice().sort((a,b)=>item(a).s-item(b).s)[0];
+}
 function ensureQuest(){
-  const k=today();if(state.quest&&state.quest.day===k)return;
-  const pick=[],add=id=>{if(pick.length<3&&!pick.includes(id))pick.push(id);};
-  dueList().forEach(d=>add(d.id));
-  ALL.filter(id=>item(id).a==="A"&&item(id).s===0).forEach(add);
-  SYLLABUS.slice().sort((a,b)=>stats(a.leaves).pct-stats(b.leaves).pct).forEach(p=>{const f=p.leaves.find(id=>item(id).s===0);if(f)add(f);});
-  ALL.filter(id=>item(id).s<4).forEach(add);
-  state.quest={day:k,ids:pick};
+  const k=today(),g=questGroup(k);
+  if(state.quest&&state.quest.day===k){
+    if(state.quest.g===g)return;
+    if(state.quest.ids.length&&state.quest.ids.every(id=>LEAF[id]&&LEAF[id].p.g===g)){state.quest.g=g;return;}
+  }
+  state.quest={day:k,g,ids:SYLLABUS.filter(p=>p.g===g).map(pickFor)};
 }
 
 /* ---------- actions ---------- */
@@ -555,7 +783,7 @@ function renderTabs(){
 function viewToday(){
   ensureQuest();
   const q=state.quest.ids,doneN=q.filter(id=>item(id).t===today()).length;
-  const n=NOTES.length?NOTES[Math.max(0,daysBetween(state.seen.start||today(),today()))%NOTES.length]:"";
+  const n=DATED_NOTES[today()]||(NOTES.length?NOTES[Math.max(0,daysBetween(state.seen.start||today(),today()))%NOTES.length]:"");
   const due=dueList(),f=state.focus[today()]||{m:0,n:0};
   let week="";for(let i=6;i>=0;i--){const d=new Date();d.setDate(d.getDate()-i);const m=(state.focus[dayKey(d)]||{m:0}).m;
     week+=`<div class="${i===0?"t":""}"><b style="height:${Math.min(100,m/240*100)}%"></b>${"SMTWTFS"[d.getDay()]}</div>`;}
@@ -564,9 +792,9 @@ function viewToday(){
   <p class="meta">${LEVELS[levelOf(xp())][1]}, ${xp()} XP. ${loggedToday?`${loggedToday} update${loggedToday>1?"s":""} logged today, ${f.m} focus minutes.`:"Nothing logged yet today. One quest is a great start."}</p>
   ${n?`<div class="card note" style="margin-bottom:22px"><p>${esc(n)}</p>${NOTE_SIGNOFF?`<small>${esc(NOTE_SIGNOFF)}</small>`:""}</div>`:""}
   <div class="card" style="margin-bottom:22px">
-    <h3>Today's three</h3>
+    <h3>Today's three: Group ${state.quest.g===1?"I":"II"}</h3>
     <div class="questbar" aria-label="${doneN} of ${q.length} quests done">${q.map(id=>`<i class="${item(id).t===today()?"on":""}"></i>`).join("")}</div>
-    <p class="hint">Picked for you: revisions that are due first, then A priority chapters, then your least covered paper. Fill the next dot on each to clear it. A new set arrives tomorrow.</p>
+    <p class="hint">One from each Group ${state.quest.g===1?"I":"II"} paper today, and tomorrow switches to Group ${state.quest.g===1?"II":"I"}, so both groups keep moving. Revisions that are due come first, then A priority chapters. Fill the next dot on each to clear it.</p>
     <div class="book">${q.length?q.map(leafRow).join(""):`<p class="empty">Every entry is at Rev 3. Time for full mock tests.</p>`}</div>
   </div>
   <div class="grid2">
@@ -581,8 +809,9 @@ function viewToday(){
       <p class="hint" style="margin-top:12px">Each finished session earns 15 XP. Keep this tab open while it runs.</p>
       <div class="week" aria-label="Focus minutes, last 7 days">${week}</div>
     </div>
-    <div class="card"><h3>Revision due${due.length?` (${due.length})`:""}</h3>
-      <p class="hint">Revisions come due 7 days after studying, 21 days after Rev 1 and 45 days after Rev 2.</p>
+    <div class="card"><h3>Revision to-do${due.length?` (${due.length})`:""}</h3>
+      <p class="hint">Revisions come due 7 days after studying, 21 days after Rev 1 and 45 days after Rev 2. The list pops up by itself the first time you open the site on a day something is due.</p>
+      ${due.length?`<p style="margin:0 0 12px"><button class="ghost" data-act="revshow">Open as checklist</button></p>`:""}
       ${due.length?`<div class="book">${due.slice(0,8).map(d=>leafRow(d.id)).join("")}</div>${due.length>8?`<p class="hint" style="margin-top:8px">And ${due.length-8} more. Clear these first.</p>`:""}`:`<p class="empty" style="padding:0">Nothing due. You're on schedule.</p>`}
     </div>
   </div>`;
@@ -670,9 +899,9 @@ function viewGuide(){
     </ol></section>
   <section><h3>A good daily rhythm</h3>
     <ol>
-      <li>Open <b>Today</b>. Clear the three quests. They're picked automatically: overdue revisions first, then A chapters, then whichever paper is furthest behind.</li>
+      <li>Open <b>Today</b>. Clear the three quests, one from each paper. Groups alternate every day: Group I one day, Group II the next, so neither group gets left behind. Within each paper, overdue revisions come first, then A chapters, then the next chapter not yet started.</li>
       <li>Start a focus session before each block of study. 25 minutes for lighter days, 50 for deep work.</li>
-      <li>Check <b>Revision due</b>. Spacing revisions out is what makes things stick in May, so these are worth clearing before new chapters.</li>
+      <li>Clear your <b>Revision to-do</b>. It pops up on its own the first time you open the site on any day something is due, and anything left over carries to the next day. Spacing revisions out is what makes things stick in May, so these are worth clearing before new chapters.</li>
       <li>After any test, log it in <b>Tests</b>. The group check tells you whether those scores would clear the group.</li>
     </ol></section>
   <section><h3>XP, levels and badges</h3>
@@ -707,6 +936,32 @@ function renderMain(){
 }
 function render(){renderCover();renderTabs();renderMain();}
 
+/* ---------- revision to-do popup ---------- */
+function revBody(){
+  const due=dueList();
+  if(!due.length)return `<p class="alldone">All revisions for today are done. Lovely.</p>`;
+  return `<div class="rvlist">${due.map(d=>{const L=LEAF[d.id],it=item(d.id),nxt=STAGES[it.s+1];
+    return `<div class="rv"><div><small>P${L.p.no} ${esc(L.p.name)}${L.parent?`, ${esc(L.parent)}`:""}</small><b>${esc(L.title)}</b>
+      <small class="${d.over?"late":""}">${nxt} ${d.over?`overdue by ${d.over} day${d.over>1?"s":""}`:"due today"}</small></div>
+      <button class="primary sm" data-act="revdone" data-id="${d.id}">Mark ${nxt} done</button></div>`;}).join("")}</div>`;
+}
+function revPopup(force){
+  if(document.getElementById("revpop")||document.getElementById("welcome")||document.getElementById("tourBox"))return;
+  const due=dueList();
+  if(!force&&(!due.length||state.seen.revPop===today()))return;
+  if(!force){state.seen.revPop=today();save(false);}
+  const m=document.createElement("div");m.className="modal";m.id="revpop";
+  m.innerHTML=`<div class="box" role="dialog" aria-modal="true" aria-labelledby="rvt"><h3 id="rvt">Revision to-do for today</h3>
+    <p class="lead">${due.length?`${due.length} topic${due.length>1?"s are":" is"} ready for revision. Tick each one off as you finish it. Anything you don't get to stays here tomorrow.`:"Nothing due right now."}</p>
+    <div id="rvbody">${revBody()}</div>
+    <div class="trow"><button class="ghost" data-act="revclose">${due.length?"Later":"Close"}</button></div></div>`;
+  document.body.appendChild(m);m.querySelector("button").focus();
+}
+function refreshRev(){const b=document.getElementById("rvbody");if(b)b.innerHTML=revBody();
+  const n=dueList().length,l=document.querySelector("#revpop .lead");
+  if(l)l.textContent=n?`${n} topic${n>1?"s":""} left. Anything you don't get to stays here tomorrow.`:"";
+  const c=document.querySelector("#revpop [data-act=revclose]");if(c&&!n)c.textContent="Close";}
+
 /* ---------- welcome & tour ---------- */
 function welcome(){
   const m=document.createElement("div");m.className="modal";m.id="welcome";
@@ -728,7 +983,7 @@ const TOUR=[
 ];
 function tour(i){
   endTour();
-  if(i>=TOUR.length){state.seen.welcome=true;save(false);tab="today";render();toast("You're all set. <b>Good luck!</b>");return;}
+  if(i>=TOUR.length){state.seen.welcome=true;save(false);tab="today";render();toast("You're all set. <b>Good luck!</b>");revPopup();return;}
   const [sel,text,t]=TOUR[i];if(tab!==t){tab=t;render();}
   const el=document.querySelector(sel);if(!el){tour(i+1);return;}
   el.scrollIntoView({block:"center"});
@@ -768,10 +1023,13 @@ document.addEventListener("click",e=>{
     case "import":document.getElementById("importFile").click();break;
     case "tour":tour(0);break;
     case "tnext":tour(+d.v);break;
-    case "tskip":case "skipwelcome":endTour();state.seen.welcome=true;save(false);render();break;
+    case "tskip":case "skipwelcome":endTour();state.seen.welcome=true;save(false);render();revPopup();break;
+    case "revdone":{const it=item(d.id);if(it.s<4)setItem(d.id,{s:it.s+1});refreshRev();break;}
+    case "revclose":document.getElementById("revpop")?.remove();break;
+    case "revshow":revPopup(true);break;
   }
 });
-document.addEventListener("keydown",e=>{if(e.key==="Escape"&&(document.getElementById("tourBox")||document.getElementById("welcome"))){endTour();state.seen.welcome=true;save(false);}});
+document.addEventListener("keydown",e=>{if(e.key==="Escape")document.getElementById("revpop")?.remove();if(e.key==="Escape"&&(document.getElementById("tourBox")||document.getElementById("welcome"))){endTour();state.seen.welcome=true;save(false);}});
 document.getElementById("importFile").addEventListener("change",async e=>{
   const f=e.target.files[0];if(!f)return;
   try{const d=JSON.parse(await f.text());if(!d.items)throw 0;
@@ -781,7 +1039,7 @@ document.getElementById("importFile").addEventListener("change",async e=>{
 });
 document.getElementById("editDates").addEventListener("click",e=>{const o=document.getElementById("dates").classList.toggle("open");e.currentTarget.setAttribute("aria-expanded",o);});
 ["g1","g2"].forEach(k=>document.getElementById(k).addEventListener("change",e=>{if(!e.target.value)return;state.dates[k]=e.target.value;state.dates.set=true;save(false);renderCover();}));
-document.addEventListener("visibilitychange",()=>{if(!document.hidden&&primed){ensureQuest();render();}});
+document.addEventListener("visibilitychange",()=>{if(!document.hidden&&primed){ensureQuest();render();revPopup();}});
 
 render();
 pull();
