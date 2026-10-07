@@ -133,6 +133,20 @@ main{padding:calc(20px + env(safe-area-inset-top,0px)) clamp(16px,4vw,48px) 60px
 .week b{width:100%;background:var(--blue);border-radius:3px 3px 0 0;min-height:2px;display:block;margin-bottom:4px}
 .week .t b{background:var(--gold)}
 
+.plan{border-top:1px solid var(--rule)}
+.pb{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:10px 0;border-bottom:1px solid var(--rule)}
+.pbn{flex:1;min-width:0}
+.pbn b{font-weight:600}
+.pbn small{display:block;color:var(--muted);font-size:.8rem}
+.pbar{display:block;height:5px;background:var(--rule);border-radius:3px;overflow:hidden;margin-top:6px;max-width:320px}
+.pbar i{display:block;height:100%;background:var(--blue)}
+.pb.done .pbar i{background:var(--gold)}
+.pb.run{background:linear-gradient(90deg,#E3EAF6,transparent 80%)}
+.pbb{display:flex;gap:6px;align-items:center;flex:none}
+.pbb .ok{color:var(--green);font-weight:600;font-size:.85rem;padding:0 6px}
+.pbb .live{color:var(--blue);font-weight:600;font-size:.85rem;padding:0 6px}
+.swap{color:var(--blue);margin-left:6px;font-size:.8rem}
+@media (max-width:520px){.pb{flex-wrap:wrap}.pbb{width:100%}.pbb .sm{flex:1}}
 /* Tests */
 .form{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:10px;align-items:end}
 .form label{display:flex;flex-direction:column;gap:4px;font-size:.82rem;color:var(--muted)}
@@ -473,6 +487,16 @@ const DATED_NOTES = {
 };
 /* Quests alternate groups daily. This date is a Group I day. */
 const QUEST_ANCHOR = "2026-10-05";
+/* Her daily study plan in minutes. FM and SM alternate days; the QUEST_ANCHOR date is an FM day. */
+const PLAN = [
+  {k:"acc",name:"Advanced Accounting",min:75},
+  {k:"cost",name:"Costing",min:75},
+  {k:"law",name:"Law",min:60},
+  {k:"audit",name:"Audit",min:60},
+  {alt:[{k:"fm",name:"Financial Management"},{k:"sm",name:"Strategic Management"}],min:60},
+  {k:"dt",name:"Direct Tax",min:60},
+  {k:"gst",name:"GST",min:60}
+];
 /* ===== End of settings ===== */
 
 const LS_KEY = "ca-inter-ledger-v1";
@@ -577,15 +601,18 @@ const BADGES = [
   ["marathon","Marathon day","Finish 4 focus sessions in one day",c=>c.maxDay>=4],
   ["mock","First test","Log a test score",c=>c.mocks>=1],
   ["exempt","Exemption zone","Score 60 or more in a test",c=>c.best>=60],
-  ["quest","Quest complete","Finish all three of a day's quests",c=>c.questDone]
+  ["quest","Quest complete","Finish all three of a day's quests",c=>c.questDone],
+  ["fullday","Full day","Complete every block of a day's study plan",c=>c.fullDays>=1],
+  ["fullweek","Plan keeper","Complete the full study plan on 5 days",c=>c.fullDays>=5],
+  ["hours50","Fifty hours","Log 50 hours of study",c=>c.studyMin>=3000]
 ];
 
 /* ---------- state ---------- */
-function blank(){return {v:2,updated:0,items:{},dates:{g1:"2027-05-01",g2:"2027-05-01",set:false},log:{},focus:{},mocks:[],badges:{},tallied:{},lvl:0,quest:null,cheer:"",seen:{}};}
+function blank(){return {v:2,updated:0,items:{},dates:{g1:"2027-05-01",g2:"2027-05-01",set:false},log:{},focus:{},mocks:[],badges:{},tallied:{},lvl:0,quest:null,cheer:"",seen:{},plan:{},swap:{},planCheer:""};}
 function normalise(d){
   const b=blank(),o=Object.assign(b,d||{});
   o.dates=Object.assign(blank().dates,(d&&d.dates)||{});
-  ["items","log","focus","badges","tallied","seen"].forEach(k=>{if(!o[k]||typeof o[k]!=="object")o[k]={};});
+  ["items","log","focus","badges","tallied","seen","plan","swap"].forEach(k=>{if(!o[k]||typeof o[k]!=="object")o[k]={};});
   if(!Array.isArray(o.mocks))o.mocks=[];
   return o;
 }
@@ -636,9 +663,18 @@ function streak(){
   return n;
 }
 function focusTotals(){let m=0,n=0,max=0;Object.values(state.focus).forEach(f=>{m+=f.m;n+=f.n;max=Math.max(max,f.n);});return {m,n,max};}
+function blocksFor(day){
+  const fm=Math.abs(daysBetween(QUEST_ANCHOR,day))%2===0;const flip=!!state.swap[day];
+  return PLAN.map(b=>b.alt?Object.assign({min:b.min,alt:true},b.alt[(fm!==flip)?0:1]):b);
+}
+function planLogged(day,k){return ((state.plan[day]||{})[k])||0;}
+function dayFull(day){const bs=blocksFor(day);return !!state.plan[day]&&bs.every(b=>planLogged(day,b.k)>=b.min);}
+function blocksDone(){let n=0;Object.keys(state.plan).forEach(d=>{blocksFor(d).forEach(b=>{if(planLogged(d,b.k)>=b.min)n++;});});return n;}
+function addPlanMinutes(k,m){const d=today();state.plan[d]=state.plan[d]||{};state.plan[d][k]=(state.plan[d][k]||0)+m;}
+const fmtM=m=>{const h=Math.floor(m/60),r=Math.round(m%60);return h?`${h}h${r?` ${r}m`:""}`:`${r}m`;};
 function xp(){
   let x=0;Object.values(state.items).forEach(it=>{x+=STAGE_XP[it.s||0]+(it.q?10:0)+(it.a?2:0);});
-  x+=Object.keys(state.log).length*5+focusTotals().n*15+state.mocks.length*30;
+  x+=Object.keys(state.log).length*5+focusTotals().n*15+state.mocks.length*30+blocksDone()*20;
   return x;
 }
 function levelOf(x){let i=0;LEVELS.forEach((l,k)=>{if(x>=l[0])i=k;});return i;}
@@ -649,6 +685,7 @@ function ctx(){
     best:Math.max(0,...state.mocks.map(m=>pct(m))),
     tallies:SYLLABUS.filter(p=>stats(p.leaves).rev===p.leaves.length).length,
     doneAll:ids=>ids.every(id=>item(id).s>=1),revAll:ids=>ids.every(id=>item(id).s>=2),
+    fullDays:Object.keys(state.plan).filter(dayFull).length,studyMin:focusTotals().m,
     questDone:!!(state.quest&&state.quest.day===today()&&state.quest.ids.length&&state.quest.ids.every(id=>item(id).t===today()))};
 }
 const pct=m=>Math.round(m.score/m.max*100);
@@ -691,6 +728,7 @@ function checkRewards(silent){
     if(!t&&state.tallied[p.id])delete state.tallied[p.id];});
   const lv=levelOf(xp());
   if(lv>state.lvl){if(!silent){toast(`Level up: <b>${LEVELS[lv][1]}</b>`);party=true;}state.lvl=lv;}
+  if(dayFull(today())&&state.planCheer!==today()){state.planCheer=today();if(!silent){toast("Today's whole study plan is done. <b>Incredible.</b> Rest well.");party=true;}}
   if(c.questDone&&state.cheer!==today()){state.cheer=today();if(!silent){toast("All three of today's quests done. <b>Lovely work.</b>");party=true;}}
   if(party)confetti();
   if(!silent)save(false);
@@ -721,7 +759,7 @@ function beep(){try{const a=new (window.AudioContext||window.webkitAudioContext)
   o.start(a.currentTime+t);o.stop(a.currentTime+t+.25);});}catch(e){}}
 
 /* ---------- focus timer ---------- */
-const T={len:25,left:1500,end:0,run:false,iv:null};
+const T={len:25,left:1500,end:0,run:false,iv:null,block:null};
 const fmtT=s=>String(Math.floor(s/60)).padStart(2,"0")+":"+String(s%60).padStart(2,"0");
 function tick(){
   if(T.run){T.left=Math.max(0,Math.round((T.end-Date.now())/1000));if(T.left===0){finishTimer();return;}}
@@ -732,10 +770,26 @@ function toggleTimer(){
   if(T.run){T.run=false;clearInterval(T.iv);}else{T.end=Date.now()+T.left*1000;T.run=true;T.iv=setInterval(tick,500);}
   renderMain();tick();
 }
+function blockName(k){const b=blocksFor(today()).find(x=>x.k===k);return b?b.name:"";}
 function finishTimer(){
   T.run=false;clearInterval(T.iv);const k=today(),f=state.focus[k]||{m:0,n:0};f.m+=T.len;f.n++;state.focus[k]=f;
-  T.left=T.len*60;document.title="CA Inter Ledger";beep();toast(`Focus session done. <b>+15 XP</b>. Take a short break.`);
+  const nm=T.block?blockName(T.block):"";if(T.block)addPlanMinutes(T.block,T.len);
+  T.left=T.len*60;document.title="CA Inter Ledger";beep();
+  toast(nm?`${esc(nm)} session done. <b>+15 XP</b>. Take a short break.`:`Focus session done. <b>+15 XP</b>. Take a short break.`);
+  T.block=null;T.len=25;T.left=1500;
   save(true);checkRewards();render();
+}
+function stopAndLog(){
+  const sec=T.len*60-T.left,m=Math.floor(sec/60);T.run=false;clearInterval(T.iv);
+  if(m>=1){const k=today(),f=state.focus[k]||{m:0,n:0};f.m+=m;state.focus[k]=f;if(T.block)addPlanMinutes(T.block,m);
+    toast(`Logged ${fmtM(m)}${T.block?` of ${esc(blockName(T.block))}`:""}.`);save(true);checkRewards();}
+  T.block=null;T.len=25;T.left=1500;document.title="CA Inter Ledger";render();
+}
+function startBlock(k){
+  if(T.run){toast("Pause or stop the running timer first.");return;}
+  const b=blocksFor(today()).find(x=>x.k===k);if(!b)return;
+  const left=b.min-planLogged(today(),k);T.block=k;T.len=Math.max(15,left);T.left=T.len*60;
+  toggleTimer();document.getElementById("timercard")?.scrollIntoView({behavior:"smooth",block:"center"});
 }
 
 /* ---------- rendering ---------- */
@@ -786,27 +840,36 @@ function viewToday(){
   const n=DATED_NOTES[today()]||(NOTES.length?NOTES[Math.max(0,daysBetween(state.seen.start||today(),today()))%NOTES.length]:"");
   const due=dueList(),f=state.focus[today()]||{m:0,n:0};
   let week="";for(let i=6;i>=0;i--){const d=new Date();d.setDate(d.getDate()-i);const m=(state.focus[dayKey(d)]||{m:0}).m;
-    week+=`<div class="${i===0?"t":""}"><b style="height:${Math.min(100,m/240*100)}%"></b>${"SMTWTFS"[d.getDay()]}</div>`;}
+    week+=`<div class="${i===0?"t":""}"><b style="height:${Math.min(100,m/450*100)}%"></b>${"SMTWTFS"[d.getDay()]}</div>`;}
   const loggedToday=state.log[today()]||0;
+  const bs=blocksFor(today()),tgt=bs.reduce((a,b)=>a+b.min,0),got=bs.reduce((a,b)=>a+Math.min(b.min,planLogged(today(),b.k)),0);
+  const plan=bs.map(b=>{const m=planLogged(today(),b.k),done=m>=b.min,run=T.block===b.k;
+    return `<div class="pb${done?" done":""}${run?" run":""}"><div class="pbn"><b>${esc(b.name)}</b>
+      <small>${fmtM(Math.min(m,999))} of ${fmtM(b.min)}${b.alt?` <button class="linkbtn swap" data-act="swap" title="Swap FM and SM for today">swap to ${b.k==="fm"?"SM":"FM"}</button>`:""}</small>
+      <span class="pbar"><i style="width:${Math.min(100,m/b.min*100)}%"></i></span></div>
+      <div class="pbb">${run?`<span class="live">${T.run?"Running":"Paused"}</span>`:done?`<span class="ok">Done</span>`:`<button class="primary sm" data-act="bstart" data-k="${b.k}">Start</button>`}
+      <button class="ghost sm" data-act="bdone" data-k="${b.k}" title="${done?"Clear today's time for this block":"Mark done if you studied it without the timer, like a coaching class"}">${done?"Undo":"Mark done"}</button></div></div>`;}).join("");
   return `<div class="head"><h2>${greeting()}</h2></div>
   <p class="meta">${LEVELS[levelOf(xp())][1]}, ${xp()} XP. ${loggedToday?`${loggedToday} update${loggedToday>1?"s":""} logged today, ${f.m} focus minutes.`:"Nothing logged yet today. One quest is a great start."}</p>
   ${n?`<div class="card note" style="margin-bottom:22px"><p>${esc(n)}</p>${NOTE_SIGNOFF?`<small>${esc(NOTE_SIGNOFF)}</small>`:""}</div>`:""}
   <div class="card" style="margin-bottom:22px">
-    <h3>Today's three: Group ${state.quest.g===1?"I":"II"}</h3>
-    <div class="questbar" aria-label="${doneN} of ${q.length} quests done">${q.map(id=>`<i class="${item(id).t===today()?"on":""}"></i>`).join("")}</div>
-    <p class="hint">One from each Group ${state.quest.g===1?"I":"II"} paper today, and tomorrow switches to Group ${state.quest.g===1?"II":"I"}, so both groups keep moving. Revisions that are due come first, then A priority chapters. Fill the next dot on each to clear it.</p>
-    <div class="book">${q.length?q.map(leafRow).join(""):`<p class="empty">Every entry is at Rev 3. Time for full mock tests.</p>`}</div>
+    <h3>Today's study plan</h3>
+    <p class="meta" style="margin:0 0 6px">${fmtM(got)} of ${fmtM(tgt)} done</p>
+    <div class="bar" style="margin-bottom:12px"><i style="width:${Math.round(got/tgt*100)}%;background:var(--gold)"></i></div>
+    <div class="plan">${plan}</div>
+    <p class="hint" style="margin:12px 0 0">Tap Start to run the timer for that subject, or Mark done for time studied elsewhere. Each finished block earns 20 XP.</p>
   </div>
-  <div class="grid2">
-    <div class="card"><h3>Focus timer</h3>
+  <div class="grid2" style="margin-bottom:22px">
+    <div class="card" id="timercard"><h3>${T.block?esc(blockName(T.block)):"Focus timer"}</h3>
       <div class="clock" id="clock">${fmtT(T.left)}</div>
       <div class="trow">
         <button class="primary" data-act="timer">${T.run?"Pause":T.left<T.len*60?"Resume":"Start focus"}</button>
-        <button class="ghost" data-act="treset">Reset</button>
-        <button class="pill" data-act="tlen" data-v="25" aria-pressed="${T.len===25}">25 min</button>
-        <button class="pill" data-act="tlen" data-v="50" aria-pressed="${T.len===50}">50 min</button>
+        ${T.left<T.len*60?`<button class="ghost" data-act="tstop" title="Stop now and log the minutes so far">Stop and log</button>`:""}
+        <button class="ghost" data-act="treset" title="Discard this session">Reset</button>
+        ${T.block?"":`<button class="pill" data-act="tlen" data-v="25" aria-pressed="${T.len===25}">25 min</button>
+        <button class="pill" data-act="tlen" data-v="50" aria-pressed="${T.len===50}">50 min</button>`}
       </div>
-      <p class="hint" style="margin-top:12px">Each finished session earns 15 XP. Keep this tab open while it runs.</p>
+      <p class="hint" style="margin-top:12px">Each finished session earns 15 XP. Keep this tab open while it runs. The bars below are study time over the last 7 days.</p>
       <div class="week" aria-label="Focus minutes, last 7 days">${week}</div>
     </div>
     <div class="card"><h3>Revision to-do${due.length?` (${due.length})`:""}</h3>
@@ -814,6 +877,12 @@ function viewToday(){
       ${due.length?`<p style="margin:0 0 12px"><button class="ghost" data-act="revshow">Open as checklist</button></p>`:""}
       ${due.length?`<div class="book">${due.slice(0,8).map(d=>leafRow(d.id)).join("")}</div>${due.length>8?`<p class="hint" style="margin-top:8px">And ${due.length-8} more. Clear these first.</p>`:""}`:`<p class="empty" style="padding:0">Nothing due. You're on schedule.</p>`}
     </div>
+  </div>
+  <div class="card" style="margin-bottom:22px">
+    <h3>Today's three: Group ${state.quest.g===1?"I":"II"}</h3>
+    <div class="questbar" aria-label="${doneN} of ${q.length} quests done">${q.map(id=>`<i class="${item(id).t===today()?"on":""}"></i>`).join("")}</div>
+    <p class="hint">One from each Group ${state.quest.g===1?"I":"II"} paper today, and tomorrow switches to Group ${state.quest.g===1?"II":"I"}, so both groups keep moving. Revisions that are due come first, then A priority chapters. Fill the next dot on each to clear it.</p>
+    <div class="book">${q.length?q.map(leafRow).join(""):`<p class="empty">Every entry is at Rev 3. Time for full mock tests.</p>`}</div>
   </div>`;
 }
 function greeting(){const h=new Date().getHours();return h<12?"Good morning, Siddhi":h<17?"Good afternoon, Siddhi":"Good evening, Siddhi";}
@@ -900,7 +969,7 @@ function viewGuide(){
   <section><h3>A good daily rhythm</h3>
     <ol>
       <li>Open <b>Today</b>. Clear the three quests, one from each paper. Groups alternate every day: Group I one day, Group II the next, so neither group gets left behind. Within each paper, overdue revisions come first, then A chapters, then the next chapter not yet started.</li>
-      <li>Start a focus session before each block of study. 25 minutes for lighter days, 50 for deep work.</li>
+      <li>Follow <b>Today's study plan</b>: Advanced Accounting and Costing for 1h 15m each, then an hour each of Law, Audit, Direct Tax, GST and either FM or SM (they alternate daily, with a swap link if you want the other one). Tap Start on a subject to run its timer, or Mark done for time studied in class.</li>
       <li>Clear your <b>Revision to-do</b>. It pops up on its own the first time you open the site on any day something is due, and anything left over carries to the next day. Spacing revisions out is what makes things stick in May, so these are worth clearing before new chapters.</li>
       <li>After any test, log it in <b>Tests</b>. The group check tells you whether those scores would clear the group.</li>
     </ol></section>
@@ -909,7 +978,7 @@ function viewGuide(){
       <tr><td>Study a chapter</td><td>20 XP</td></tr><tr><td>First revision</td><td>15 XP more</td></tr>
       <tr><td>Second and third revisions</td><td>10 XP each</td></tr><tr><td>Practice questions done</td><td>10 XP</td></tr>
       <tr><td>Setting an ABC priority</td><td>2 XP</td></tr><tr><td>Focus session finished</td><td>15 XP</td></tr>
-      <tr><td>Test logged</td><td>30 XP</td></tr><tr><td>Each day you log anything</td><td>5 XP</td></tr>
+      <tr><td>Study plan block finished</td><td>20 XP</td></tr><tr><td>Test logged</td><td>30 XP</td></tr><tr><td>Each day you log anything</td><td>5 XP</td></tr>
     </table>
     <p>There are ${LEVELS.length} levels, from ${LEVELS[0][1]} to ${LEVELS[LEVELS.length-1][1]}, and ${BADGES.length} badges to collect. A paper earns a gold double underline and a Tallied stamp once every entry in it has at least one revision, like a balanced account.</p></section>
   <section><h3>Exam rules worth remembering</h3>
@@ -1009,8 +1078,15 @@ document.addEventListener("click",e=>{
     case "abc":{const o=["","A","B","C"],it=item(d.id);setItem(d.id,{a:o[(o.indexOf(it.a)+1)%4]});break;}
     case "q":setItem(d.id,{q:!item(d.id).q});break;
     case "timer":toggleTimer();break;
-    case "treset":T.run=false;clearInterval(T.iv);T.left=T.len*60;document.title="CA Inter Ledger";renderMain();break;
-    case "tlen":if(!T.run){T.len=+d.v;T.left=T.len*60;renderMain();}else toast("Pause the timer to change its length.");break;
+    case "treset":T.run=false;clearInterval(T.iv);T.block=null;T.len=25;T.left=1500;document.title="CA Inter Ledger";renderMain();break;
+    case "tstop":stopAndLog();break;
+    case "bstart":startBlock(d.k);break;
+    case "bdone":{const b=blocksFor(today()).find(x=>x.k===d.k);if(!b)break;const dd=today();state.plan[dd]=state.plan[dd]||{};
+      if(planLogged(dd,d.k)>=b.min){state.plan[dd][d.k]=0;save(false);}else{state.plan[dd][d.k]=b.min;save(true);toast(`${esc(b.name)} done. <b>+20 XP</b>`);}
+      checkRewards();render();break;}
+    case "swap":if(T.run&&(T.block==="fm"||T.block==="sm")){toast("Stop the timer before swapping.");break;}
+      state.swap[today()]=!state.swap[today()];save(false);render();break;
+    case "tlen":if(!T.run){T.block=null;T.len=+d.v;T.left=T.len*60;renderMain();}else toast("Pause the timer to change its length.");break;
     case "addmock":{const s=parseFloat(document.getElementById("mkS").value),m=parseFloat(document.getElementById("mkM").value),dt=document.getElementById("mkD").value;
       const err=document.getElementById("mkErr");
       if(isNaN(s)||isNaN(m)||m<=0||s<0||s>m){err.textContent="Enter the marks scored and the total, with marks no higher than the total.";break;}
