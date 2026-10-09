@@ -485,8 +485,9 @@ const DATED_NOTES = {
   "2027-04-29": "You are so ready. I'm so proud.",
   "2027-04-30": "Last day of April. You've done the work. Walk into May knowing you belong in that hall. All the best, my love."
 };
-/* Quests alternate groups daily. This date is a Group I day. */
-const QUEST_ANCHOR = "2026-10-05";
+/* Her plan starts on this date. It is a Group I day and an FM day; groups and FM/SM alternate from here. */
+const PLAN_START = "2026-10-10";
+const QUEST_ANCHOR = PLAN_START;
 /* Her daily study plan in minutes. FM and SM alternate days; the QUEST_ANCHOR date is an FM day. */
 const PLAN = [
   {k:"acc",name:"Advanced Accounting",min:75},
@@ -601,7 +602,7 @@ const BADGES = [
   ["marathon","Marathon day","Finish 4 focus sessions in one day",c=>c.maxDay>=4],
   ["mock","First test","Log a test score",c=>c.mocks>=1],
   ["exempt","Exemption zone","Score 60 or more in a test",c=>c.best>=60],
-  ["quest","Quest complete","Finish all three of a day's quests",c=>c.questDone],
+  ["quest","Clean slate","Clear every chapter on a day's list",c=>c.questDone],
   ["fullday","Full day","Complete every block of a day's study plan",c=>c.fullDays>=1],
   ["fullweek","Plan keeper","Complete the full study plan on 5 days",c=>c.fullDays>=5],
   ["hours50","Fifty hours","Log 50 hours of study",c=>c.studyMin>=3000]
@@ -649,7 +650,7 @@ async function pull(){
   }catch(e){setSync("Couldn't reach the save sheet. Anything you mark now lasts only until this tab closes.");}
   afterLoad();
 }
-function afterLoad(){primed=true;if(!state.seen.start)state.seen.start=today();ensureQuest();checkRewards(true);render();if(!state.seen.welcome)welcome();else revPopup();}
+function afterLoad(){primed=true;if(!state.seen.start)state.seen.start=today();ensureQuest();if(questDirty){questDirty=false;save(false);}checkRewards(true);render();if(!state.seen.welcome)welcome();else revPopup();}
 
 /* ---------- numbers ---------- */
 function stats(ids){
@@ -686,7 +687,7 @@ function ctx(){
     tallies:SYLLABUS.filter(p=>stats(p.leaves).rev===p.leaves.length).length,
     doneAll:ids=>ids.every(id=>item(id).s>=1),revAll:ids=>ids.every(id=>item(id).s>=2),
     fullDays:Object.keys(state.plan).filter(dayFull).length,studyMin:focusTotals().m,
-    questDone:!!(state.quest&&state.quest.day===today()&&state.quest.ids.length&&state.quest.ids.every(id=>item(id).t===today()))};
+    questDone:!!(state.quest&&state.quest.day===today()&&questItems().length&&questItems().every(qDone))};
 }
 const pct=m=>Math.round(m.score/m.max*100);
 
@@ -697,18 +698,28 @@ function dueList(){
   return out.sort((a,b)=>b.over-a.over||(item(b.id).a==="A")-(item(a.id).a==="A"));
 }
 function questGroup(day){return Math.abs(daysBetween(QUEST_ANCHOR,day||today()))%2===0?1:2;}
-function pickFor(p){
-  const due=dueList().filter(d=>LEAF[d.id].p===p);if(due.length)return due[0].id;
-  const L=p.leaves;
+function pickFor(p,skip){
+  const ok=id=>!skip.has(id);
+  const due=dueList().filter(d=>LEAF[d.id].p===p&&ok(d.id));if(due.length)return due[0].id;
+  const L=p.leaves.filter(ok);if(!L.length)return null;
   return L.find(id=>item(id).a==="A"&&item(id).s===0)||L.find(id=>item(id).s===0)||L.slice().sort((a,b)=>item(a).s-item(b).s)[0];
 }
+const qDone=q=>(item(q.id).t||"")>=q.from;
+let questDirty=false;
+function questItems(){return (state.quest&&state.quest.items)||[];}
 function ensureQuest(){
-  const k=today(),g=questGroup(k);
-  if(state.quest&&state.quest.day===k){
-    if(state.quest.g===g)return;
-    if(state.quest.ids.length&&state.quest.ids.every(id=>LEAF[id]&&LEAF[id].p.g===g)){state.quest.g=g;return;}
-  }
-  state.quest={day:k,g,ids:SYLLABUS.filter(p=>p.g===g).map(pickFor)};
+  const k=today();
+  if(k<PLAN_START){state.quest={day:k,g:1,items:[]};return;}
+  const g=questGroup(k);
+  if(state.quest&&state.quest.day===k&&state.quest.items)return;
+  // Anything not ticked since it was assigned carries forward, until it's done.
+  let carry=[];
+  if(state.quest&&state.quest.items&&state.quest.day>=PLAN_START)
+    carry=state.quest.items.filter(q=>LEAF[q.id]&&!qDone(q)&&item(q.id).s<4);
+  const skip=new Set(carry.map(q=>q.id)),fresh=[];
+  SYLLABUS.filter(p=>p.g===g).forEach(p=>{const id=pickFor(p,skip);if(id){skip.add(id);fresh.push({id,from:k});}});
+  state.quest={day:k,g,items:carry.concat(fresh)};
+  if(primed)save(false);else questDirty=true;
 }
 
 /* ---------- actions ---------- */
@@ -729,7 +740,7 @@ function checkRewards(silent){
   const lv=levelOf(xp());
   if(lv>state.lvl){if(!silent){toast(`Level up: <b>${LEVELS[lv][1]}</b>`);party=true;}state.lvl=lv;}
   if(dayFull(today())&&state.planCheer!==today()){state.planCheer=today();if(!silent){toast("Today's whole study plan is done. <b>Incredible.</b> Rest well.");party=true;}}
-  if(c.questDone&&state.cheer!==today()){state.cheer=today();if(!silent){toast("All three of today's quests done. <b>Lovely work.</b>");party=true;}}
+  if(c.questDone&&state.cheer!==today()){state.cheer=today();if(!silent){toast("Every chapter on today's list is done. <b>Lovely work.</b>");party=true;}}
   if(party)confetti();
   if(!silent)save(false);
 }
@@ -801,7 +812,7 @@ function rowHTML(id,num,title,cls,sub){
     <button class="abc a-${it.a||"none"}" data-act="abc" data-id="${id}" aria-label="Priority: ${it.a||"not set"}" title="ABC priority. A must do, B should do, C if time allows">${it.a||"ABC"}</button>
     <button class="qs${it.q?" on":""}" data-act="q" data-id="${id}" aria-pressed="${it.q}" title="Tap once you've practised this chapter's questions">${it.q?"Qs done":"Qs"}</button></span></div>`;
 }
-function leafRow(id){const L=LEAF[id];return rowHTML(id,`P${L.p.no} ${L.num}`,L.title,"chap",L.parent?`${L.p.name}, ${L.parent}`:L.p.name);}
+function leafRow(id,extra){const L=LEAF[id];return rowHTML(id,`P${L.p.no} ${L.num}`,L.title,"chap",(L.parent?`${L.p.name}, ${L.parent}`:L.p.name)+(extra?`. ${extra}`:""));}
 
 function renderCover(){
   const x=xp(),lv=levelOf(x),next=LEVELS[lv+1];
@@ -836,7 +847,7 @@ function renderTabs(){
 
 function viewToday(){
   ensureQuest();
-  const q=state.quest.ids,doneN=q.filter(id=>item(id).t===today()).length;
+  const pre=today()<PLAN_START,qi=questItems(),doneN=qi.filter(qDone).length,carried=qi.filter(q=>q.from<today());
   const n=DATED_NOTES[today()]||(NOTES.length?NOTES[Math.max(0,daysBetween(state.seen.start||today(),today()))%NOTES.length]:"");
   const due=dueList(),f=state.focus[today()]||{m:0,n:0};
   let week="";for(let i=6;i>=0;i--){const d=new Date();d.setDate(d.getDate()-i);const m=(state.focus[dayKey(d)]||{m:0}).m;
@@ -850,15 +861,22 @@ function viewToday(){
       <div class="pbb">${run?`<span class="live">${T.run?"Running":"Paused"}</span>`:done?`<span class="ok">Done</span>`:`<button class="primary sm" data-act="bstart" data-k="${b.k}">Start</button>`}
       <button class="ghost sm" data-act="bdone" data-k="${b.k}" title="${done?"Clear today's time for this block":"Mark done if you studied it without the timer, like a coaching class"}">${done?"Undo":"Mark done"}</button></div></div>`;}).join("");
   return `<div class="head"><h2>${greeting()}</h2></div>
-  <p class="meta">${LEVELS[levelOf(xp())][1]}, ${xp()} XP. ${loggedToday?`${loggedToday} update${loggedToday>1?"s":""} logged today, ${f.m} focus minutes.`:"Nothing logged yet today. One quest is a great start."}</p>
+  <p class="meta">${LEVELS[levelOf(xp())][1]}, ${xp()} XP. ${loggedToday?`${loggedToday} update${loggedToday>1?"s":""} logged today, ${f.m} focus minutes.`:"Nothing logged yet today. One chapter is a great start."}</p>
   ${n?`<div class="card note" style="margin-bottom:22px"><p>${esc(n)}</p>${NOTE_SIGNOFF?`<small>${esc(NOTE_SIGNOFF)}</small>`:""}</div>`:""}
-  <div class="card" style="margin-bottom:22px">
+  ${pre?`<div class="card note" style="margin-bottom:22px"><h3>Your plan starts ${fmtDay(PLAN_START)}</h3>
+    <p style="font-family:var(--sans);font-size:1rem">Your daily hours and chapter list begin ${daysBetween(today(),PLAN_START)===1?"tomorrow":`in ${daysBetween(today(),PLAN_START)} days`}. Group I and FM go first. You can still mark chapters you've already covered in the Papers tab.</p></div>`:`<div class="card" style="margin-bottom:22px">
     <h3>Today's study plan</h3>
     <p class="meta" style="margin:0 0 6px">${fmtM(got)} of ${fmtM(tgt)} done</p>
     <div class="bar" style="margin-bottom:12px"><i style="width:${Math.round(got/tgt*100)}%;background:var(--gold)"></i></div>
     <div class="plan">${plan}</div>
     <p class="hint" style="margin:12px 0 0">Tap Start to run the timer for that subject, or Mark done for time studied elsewhere. Each finished block earns 20 XP.</p>
-  </div>
+  </div>`}
+  ${pre?"":`<div class="card" style="margin-bottom:22px">
+    <h3>Today's chapters: Group ${state.quest.g===1?"I":"II"}${carried.length?` plus ${carried.length} carried over`:""}</h3>
+    <div class="questbar" aria-label="${doneN} of ${qi.length} done">${qi.map(q=>`<i class="${qDone(q)?"on":""}"></i>`).join("")}</div>
+    <p class="hint">One new chapter from each Group ${state.quest.g===1?"I":"II"} paper today, and tomorrow switches to Group ${state.quest.g===1?"II":"I"}. Anything you don't tick stays on this list the next day until it's done, so nothing gets skipped. Fill the next dot on a chapter to clear it.</p>
+    <div class="book">${qi.length?qi.map(q=>leafRow(q.id,q.from<today()?`Carried over from ${fmtDay(q.from)}`:"")).join(""):`<p class="empty">Every entry is at Rev 3. Time for full mock tests.</p>`}</div>
+  </div>`}
   <div class="grid2" style="margin-bottom:22px">
     <div class="card" id="timercard"><h3>${T.block?esc(blockName(T.block)):"Focus timer"}</h3>
       <div class="clock" id="clock">${fmtT(T.left)}</div>
@@ -878,13 +896,9 @@ function viewToday(){
       ${due.length?`<div class="book">${due.slice(0,8).map(d=>leafRow(d.id)).join("")}</div>${due.length>8?`<p class="hint" style="margin-top:8px">And ${due.length-8} more. Clear these first.</p>`:""}`:`<p class="empty" style="padding:0">Nothing due. You're on schedule.</p>`}
     </div>
   </div>
-  <div class="card" style="margin-bottom:22px">
-    <h3>Today's three: Group ${state.quest.g===1?"I":"II"}</h3>
-    <div class="questbar" aria-label="${doneN} of ${q.length} quests done">${q.map(id=>`<i class="${item(id).t===today()?"on":""}"></i>`).join("")}</div>
-    <p class="hint">One from each Group ${state.quest.g===1?"I":"II"} paper today, and tomorrow switches to Group ${state.quest.g===1?"II":"I"}, so both groups keep moving. Revisions that are due come first, then A priority chapters. Fill the next dot on each to clear it.</p>
-    <div class="book">${q.length?q.map(leafRow).join(""):`<p class="empty">Every entry is at Rev 3. Time for full mock tests.</p>`}</div>
-  </div>`;
+</div>`;
 }
+function fmtDay(k){const d=new Date(k+"T00:00:00");return d.toLocaleDateString("en-IN",{weekday:"short",day:"numeric",month:"short"});}
 function greeting(){const h=new Date().getHours();return h<12?"Good morning, Siddhi":h<17?"Good afternoon, Siddhi":"Good evening, Siddhi";}
 
 function passes(id){const it=item(id);
@@ -968,7 +982,7 @@ function viewGuide(){
     </ol></section>
   <section><h3>A good daily rhythm</h3>
     <ol>
-      <li>Open <b>Today</b>. Clear the three quests, one from each paper. Groups alternate every day: Group I one day, Group II the next, so neither group gets left behind. Within each paper, overdue revisions come first, then A chapters, then the next chapter not yet started.</li>
+      <li>Open <b>Today</b> and clear the chapter list. Each day adds one chapter from every paper in that day's group: Group I one day, Group II the next. Anything left unticked carries over to the next day, marked with the day it came from, and stays until it's done. Within each paper, overdue revisions come first, then A chapters, then the next chapter not yet started.</li>
       <li>Follow <b>Today's study plan</b>: Advanced Accounting and Costing for 1h 15m each, then an hour each of Law, Audit, Direct Tax, GST and either FM or SM (they alternate daily, with a swap link if you want the other one). Tap Start on a subject to run its timer, or Mark done for time studied in class.</li>
       <li>Clear your <b>Revision to-do</b>. It pops up on its own the first time you open the site on any day something is due, and anything left over carries to the next day. Spacing revisions out is what makes things stick in May, so these are worth clearing before new chapters.</li>
       <li>After any test, log it in <b>Tests</b>. The group check tells you whether those scores would clear the group.</li>
@@ -1046,7 +1060,7 @@ const TOUR=[
   [".book .abc","Set ABC priority. A is must do, C is if time allows.","papers"],
   [".book .qs","Tap this once you've practised that chapter's questions.","papers"],
   ["#levelbox","Everything you mark earns XP. Climb ten levels on the way to May.","papers"],
-  ["[data-tab=today]","Your daily three, revisions that are due, and a focus timer. Start here each day.","papers"],
+  ["[data-tab=today]","Your daily hours, today's chapters, and anything carried over. Start here each day.","papers"],
   ["[data-tab=tests]","Log test scores here to see if they'd clear the group.","papers"],
   ["[data-tab=guide]","The full guide is always here. All the best, you've got this.","papers"]
 ];
